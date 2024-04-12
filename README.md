@@ -24,12 +24,15 @@ Please report Issues on this GitHub page.
 
 ### References
 
-Dey et al. 2023  
-Efford 2014
-Moqanaki et al. 2021  
-Royle et al. 2013
-Stevenson et al. 2021  
+Dey, S., E. Moqanaki, C. Milleret, P. Dupont, M. Tourani, and R. Bischof. 2023. Modelling Spatially Autocorrelated Detection Probabilities in Spatial Capture-Recapture Using Random Effects. Ecological Modelling 479: 110324.
 
+Efford, M. G. 2014. Bias from Heterogeneous Usage of Space in Spatially Explicit Capture-Recapture Analyses. Methods in Ecology and Evolution 5: 599--602.
+
+Moqanaki, E. M., Milleret, C. Tourani, M., Dupont, P. and Bischof, R. 2021. Consequences of Ignoring Variable and Spatially Autocorrelated Detection Probability in Spatial Capture-Recapture. Landscape Ecology 36: 2879--95. 
+
+Royle, J. A., Chandler, R.B., Sun, C.C., and Fuller, A. K. 2013. Integrating Resource Selection Information with Spatial Capture–Recapture.” Methods in Ecology and Evolution 4: 520--30.
+
+Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial Correlation Structures for Detections of Individuals in Spatial Capture–Recapture Models. Biometrics 78: 963--73.
 
 [CLO]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/CLO/secr-simulations-CLO.html
 [DNC]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/DNC/secr-simulations-DNC.html
