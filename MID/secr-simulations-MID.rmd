@@ -36,15 +36,15 @@ Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.
 
 The same conditions were used for simulation and fitting.
 
-| Parameter | Value(s) |
-|:-----|:-----------------------|
-| detectfn | 'HHN' |
-| D | $12.5 \sigma^{-2}$ |
-| lambda0  | 0.1 |
-| sigma    | c/2 |
-| noccasions | 10 |
-| buffer   | $4\sigma$ |
-| nx       | 32 |
+| Parameter || Value(s) |
+|:-----|-|:----------------------|
+| detectfn || 'HHN' |
+| D        || $12.5 \sigma^{-2}$ |
+| lambda0  || 0.1 |
+| sigma    || c/2 |
+| noccasions || 10 |
+| buffer   || $4\sigma$ |
+| nx       || 32 |
 
 ```{r plotscenario, echo = FALSE, warning = FALSE, message = FALSE, fig.width = 4, fig.height = 4, fig.cap = "Figure: Simulation scenario; circle is 95% probability contour for hypothetical centrally placed home range."}
 library(secr)
