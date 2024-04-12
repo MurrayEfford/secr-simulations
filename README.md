@@ -1,5 +1,7 @@
 # Spatially Explicit Capture-Recapture Simulations
 
+SITE UNDER DEVELOPMENT - RESULTS WILL CHANGE
+
 This site holds R code and results for simulations to assess the robustness of spatially explicit capture--recapture estimates of population density to various breaches of model assumptions.
 
 All simulations were conducted in the R package **secrdesign** and SECR models were fitted by maximum likelihood in R package **secr**.
@@ -10,7 +12,7 @@ Follow the HTML link for results and the RMD link for R code.
 |:-|:--|:--------------------|
 | [CLO]  | [CLO rmd]  | Failure of closure due to mortality and recruitment |
 | [DNC]  | [DNC rmd]  | Failure of closure due to dispersal |
-| [MID]  | [MID rmd]  | Misidentification |
+| [MID]  | [MID rmd]  | Mis-identification |
 | [Mt]   | [Mt rmd]   | Temporal variation |
 | [Mb]   | [Mb rmd]   | Behavioural effects |
 | [Mh]   | [Mh rmd]   | Individual heterogeneity |
