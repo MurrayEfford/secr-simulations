@@ -17,8 +17,8 @@ Follow the HTML link for results and the RMD link for R code.
 | [Mb]   | [Mb rmd]   | Behavioural effects |
 | [Mh]   | [Mh rmd]   | Individual heterogeneity |
 | [OU]   | [OU rmd]   | Serial correlation of location within home range |
-| [SARE] | [SARE rmd] | Spatially autocorrelated random effects^1^ |
-| [LDF]  | [LDF rmd]  | Latent detection field Stevenson et al. (2021) |
+| [SARE] | [SARE rmd] | Spatially autocorrelated random effects<sup>1</sup> |
+| [LDF]  | [LDF rmd]  | Latent detection field (Stevenson et al. 2021) |
 
 1. SARE includes the scenarios considered by Royle et al. (2013), Efford (2014), Moqanaki et al. (2021), and Dey et al. (2023)
 
@@ -26,15 +26,15 @@ Please report Issues on this GitHub page.
 
 ### References
 
-Dey, S., E. Moqanaki, C. Milleret, P. Dupont, M. Tourani, and R. Bischof. 2023. Modelling Spatially Autocorrelated Detection Probabilities in Spatial Capture-Recapture Using Random Effects. Ecological Modelling 479: 110324.
+Dey, S., Moqanaki, E., Milleret, C., Dupont, P., Tourani, M. and Bischof, R. 2023. Modelling Spatially autocorrelated detection probabilities in spatial capture--recapture using random effects. Ecological Modelling 479: 110324.
 
-Efford, M. G. 2014. Bias from Heterogeneous Usage of Space in Spatially Explicit Capture-Recapture Analyses. Methods in Ecology and Evolution 5: 599--602.
+Efford, M. G. 2014. Bias from heterogeneous usage of space in spatially explicit capture--recapture analyses. Methods in Ecology and Evolution 5: 599--602.
 
-Moqanaki, E. M., Milleret, C. Tourani, M., Dupont, P. and Bischof, R. 2021. Consequences of Ignoring Variable and Spatially Autocorrelated Detection Probability in Spatial Capture-Recapture. Landscape Ecology 36: 2879--95. 
+Moqanaki, E. M., Milleret, C. Tourani, M., Dupont, P. and Bischof, R. 2021. Consequences of ignoring variable and spatially autocorrelated detection probability in spatial capture--recapture. Landscape Ecology 36: 2879--95. 
 
-Royle, J. A., Chandler, R.B., Sun, C.C., and Fuller, A. K. 2013. Integrating Resource Selection Information with Spatial Capture–Recapture.” Methods in Ecology and Evolution 4: 520--30.
+Royle, J. A., Chandler, R.B., Sun, C.C., and Fuller, A. K. 2013. Integrating resource selection information with spatial capture--recapture. Methods in Ecology and Evolution 4: 520--30.
 
-Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial Correlation Structures for Detections of Individuals in Spatial Capture–Recapture Models. Biometrics 78: 963--73.
+Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structures for detections of individuals in spatial capture--recapture models. Biometrics 78: 963--73.
 
 [CLO]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/CLO/secr-simulations-CLO.html
 [DNC]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/DNC/secr-simulations-DNC.html
