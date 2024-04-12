@@ -28,7 +28,7 @@ Detected animals may be
 2. mistakenly identified as a new 'ghost' individual, or
 3. indistinguishable from another with the same genotype at the loci sampled.
 
-We simulate these mechanisms separately (MID1, MID2, MID3.
+We simulate these mechanisms separately (MID1, MID2, MID3).
 
 ## Settings
 
