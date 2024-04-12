@@ -1,0 +1,410 @@
+---
+title: "**secr** simulations MID"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Misidentification as source of bias in SECR
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+## Problem description
+
+Detected animals may be 
+
+1. misidentified as an existing marked (known) individual, or 
+2. mistakenly identified as a new 'ghost' individual, or
+3. indistinguishable from another with the same genotype at the loci sampled.
+
+We simulate these mechanisms separately (MID1, MID2, MID3.
+
+## Settings
+
+Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.  
+
+The same conditions were used for simulation and fitting.
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D | $12.5 \sigma^{-2}$ |
+| lambda0  | 0.1 |
+| sigma    | c/2 |
+| noccasions | 10 |
+| buffer   | $4\sigma$ |
+| nx       | 32 |
+
+```{r plotscenario, echo = FALSE, warning = FALSE, message = FALSE, fig.width = 4, fig.height = 4, fig.cap = "Figure: Simulation scenario; circle is 95% probability contour for hypothetical centrally placed home range."}
+library(secr)
+grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
+msk <- make.mask(grid, buffer = 80, nx = 32)
+par(mar = c(1,1,1,1))
+plot(msk, dots=F, mesh='white', col=grey(0.9))
+plot(grid, add = TRUE, detpar=list(pch=16))
+symbols(mean(msk$x), mean(msk$y), inches = FALSE, circles = 2.45 * 20, add = TRUE)
+plot(sim.popn(12.5, grid, buffer = 80), frame = FALSE, add = TRUE, cex = 0.7)
+```
+## Package version, date and platform
+
+**secr** 4.6.7  
+**secrdesign** 2.9.1  
+R version 4.3.2 (2023-10-31 ucrt)  
+Platform: x86_64-w64-mingw32/x64 (64-bit)  
+Running under: Windows 11 x64 (build 22631)  
+
+## Simulation code
+
+This alternative capthist simulation function generates a capthist the usual way with `sim.capthist` and then scrambles the identities according to one of the three mechanisms.
+
+```{r MID capthist, eval = TRUE, message = FALSE, results = "hide"}
+simMID.capthist <- function(traps, popn, detectfn, detectpar = list(),
+                            noccasions = 10, pMID = 0, pGhost = 0, PI = 0, ...)
+{
+    ch0 <- sim.capthist(traps, popn, detectfn, detectpar, noccasions)
+    n <- nrow(ch0)
+    capt <- as.data.frame(ch0)
+    capt$ID <- as.integer(capt$ID)
+    newcapt <- capt
+    if (pMID > 0) {
+        # on any occasion, ID reassigned to any known animal with probability pMID
+        whichmisID <- runif(nrow(capt)) < pMID
+        newID <- sample.int(n, size = sum(whichmisID), replace = TRUE)
+        newcapt$ID[whichmisID] <- newID
+    }
+    else if (pGhost>0) {
+        # proportion pGhost of all detections receive unrepeatable ID
+        novel <- runif(nrow(capt)) < pGhost
+        newcapt$ID[novel] <- paste('N',capt$ID[novel], capt$Occasion[novel], capt$TrapID[novel], sep='.')
+    }
+    else if (PI>0) {
+        pairwise <- 1 - matrix(runif(n*n) < PI, nrow = n)
+        # find any pairs, triplets etc. with zero distance and assign common ID
+        d <- as.dist(pairwise)   # uses only lower triangle of pairwise
+        groupID <- cutree(hclust(d, 'single'), h = 0.1)  # groups individuals linked by dist==0
+        newcapt$ID <- groupID[capt$ID]
+    }
+    # re-read
+    ch <- make.capthist(newcapt, traps, noccasions = noccasions)
+    if (PI>0) {
+        identicalpairs <- cbind(as.numeric(row(pairwise)), as.numeric(col(pairwise)))[!as.logical(pairwise),]
+        attr(ch, 'identicalpairs') <- identicalpairs
+        attr(ch, 'groupID') <- groupID
+    }
+    ch
+}
+```
+
+```{r common settings, eval = TRUE, message = FALSE, results = "hide"}
+source('../setup.R')
+cols <- RColorBrewer::brewer.pal(n = 5, name = "YlOrBr")
+cols2 <- RColorBrewer::brewer.pal(n = 5, name = "Blues")
+grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
+fitarg <- list(detectfn = 'HHN', model = lambda0 ~ 1, start = NULL)
+nrepl <- 200
+```
+
+### Run MID simulations
+
+```{r test simMID.capthist, eval = FALSE, echo = FALSE, message = FALSE, results = "hide"}
+# test code
+pop <- sim.popn(12.5, grid)
+ch <- simMID.capthist (grid, popn = pop, detectfn=14, detectpar = list(lambda0=0.2, sigma=20),
+                       noccasions = 10, pMID=0, pGhost=0.1)
+summary(ch)
+ch <- simMID.capthist (grid, popn = pop, detectfn=14, detectpar = list(lambda0=0.2, sigma=20),
+                       noccasions = 10, PI=0.001)
+summary(ch)
+```
+
+```{r MID-run1, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+detarg1 <- expand.arg(pMID = c(0.00, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2))
+scen1 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
+    lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg1), fitindex = 1)
+MIDsims1 <- run.scenarios(nrepl = nrepl, scen1, trapset = grid, det.args = detarg1, 
+    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+saveRDS(MIDsims1, file = 'MIDsims1.RDS')
+```
+
+```{r MID-run2, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+detarg2 <- expand.arg(pGhost = c(0.00, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2))
+scen2 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
+    lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg2), fitindex = 1)
+MIDsims2 <- run.scenarios(nrepl = nrepl, scen2, trapset = grid, det.args = detarg2, 
+    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+saveRDS(MIDsims2, file = 'MIDsims2.RDS')
+```
+
+```{r MID-run3, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+detarg3 <- expand.arg(PI = c(0.00, 10^(seq(-5,-2,0.5))))
+scen3 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
+    lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg3))
+MIDsims3 <- run.scenarios(nrepl = nrepl, scen3, trapset = grid, det.args = detarg3, 
+    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+saveRDS(MIDsims3, file = 'MIDsims3.RDS')
+```
+
+```{r MID-run4, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+scen4 <- make.scenarios(D = 12.5 * c(0.25,0.5,1,2,4), noccasions = 10, detectfn = 14, 
+    lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg3))
+scen4 <- scen4[order(scen4$D, scen4$detindex),]
+scen4$scenario <- 1:nrow(scen4)
+MIDsims4 <- run.scenarios(nrepl = nrepl, scen4, trapset = grid, det.args = detarg3, 
+    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+saveRDS(MIDsims4, file = 'MIDsims4.RDS')
+```
+
+```{r MID-run5, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+scen5 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
+    lambda0 = c(0.05,0.1,0.2), sigma = 20, detindex = 1:length(detarg3))
+scen5 <- scen5[order(scen5$lambda0, scen5$detindex),]
+scen5$scenario <- 1:nrow(scen5)
+MIDsims5 <- run.scenarios(nrepl = nrepl, scen5, trapset = grid, det.args = detarg3, 
+    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+saveRDS(MIDsims5, file = 'MIDsims5.RDS')
+```
+
+## Results
+
+The simulation scenario resulted in the detection of about 110 individuals in the null case (scenario 1 with pMID = 0 etc.).
+
+### MID1 Random mis-identification
+
+```{r MID-tables1, eval = TRUE, echo = FALSE, results = "hold"}
+options(width=110, digits=4)
+MIDsims1 <- readRDS(file = 'MIDsims1.RDS')
+```
+
+```{r MID-tables2, eval = TRUE, echo = FALSE}
+scenarios <- attr(detarg1, 'comb')
+cbind(scenarios, getcounts(MIDsims1)[,-5])
+countlegend(-5)
+```
+
+```{r MID-tables3, echo = FALSE}
+estD <- estimateSummary(MIDsims1)[,-1]
+estL <- estimateSummary(MIDsims1, 'lambda0')[,-1]
+estS <- estimateSummary(MIDsims1, 'sigma')[,-1]
+cat('Density\n')
+cbind(scenarios, round(estD,4))
+cat('lambda0\n') 
+cbind(scenarios, round(estL,4))
+cat('sigma\n')
+cbind(scenarios, round(estS,4))
+```
+
+```{r MID1 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 5, fig.height = 5, fig.cap = "Figure: Relative bias of parameter estimates from null model given misidentification. Shaded band: |RB| < 10%." }
+par(mfrow=c(1,1), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', bg = 'white', pty='s')
+x <- scenarios$pMID
+# when does RB exceed 10%?
+approx(estD$RB, x, xout=-0.1)$y
+# [1] 0.023488
+leg <- c('D','lambda0','sigma')
+plot(0,0,type='n', xlim=c(0.0,0.2), log='', ylim=c(-1,1), xlab = 'Proportion mis-assigned', ylab='RB')
+shade(0.1)
+abline(h=0, lty=2)
+addRB(x, estL, type='o', pch=21, bg = 'white')
+addRB(x, estS, type='o', pch=24, bg = 'white', star = 1.0)
+addRB(x, estD, type='o', pch=21, bg = cols[3], cex = 1.3)
+legend(0.15, 0.6, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(cols[3],'white','white'))
+```
+
+### MID2 Ghost individuals
+
+```{r MID2-table1, eval = TRUE, echo = FALSE}
+MIDsims2 <- readRDS(file = 'MIDsims2.RDS')
+scenarios <- attr(detarg2, 'comb')
+```
+
+```{r MID2-table2, eval = TRUE}
+cbind(scenarios, getcounts(MIDsims2)[,-5])
+```
+
+```{r MID2 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 5, fig.height = 5, fig.cap = "Figure: Relative bias of parameter estimates from null model vs frequency of ghost identities. Shaded band: |RB| < 10%" }
+estD <- estimateSummary(MIDsims2)[,-1]
+estL <- estimateSummary(MIDsims2, 'lambda0')[,-1]
+estS <- estimateSummary(MIDsims2, 'sigma')[,-1]
+par(mfrow=c(1,1), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', bg = 'white', pty='s')
+x <- scenarios$pGhost
+# when does RB exceed 10%?
+approx(estD$RB, x, xout=0.1)$y 
+# [1] 0.032302
+leg <- c('D','lambda0','sigma')
+plot(0,0,type='n', xlim=c(0.0,0.2), log='', ylim=c(-1,1), xlab = 'Proportion ghosted', ylab='RB')
+shade(0.1)
+abline(h=0, lty=2)
+addRB(x, estL, type='o', pch=21, bg = 'white')
+addRB(x, estS, type='o', pch=24, bg = 'white', star = 1.0)
+addRB(x, estD, type='o', pch=21, bg = cols[3],cex = 1.3)
+legend(0, 0.-0.5, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(cols[3],'white','white'))
+```
+
+### MID3 Identical genotypes
+
+```{r MID3-table1, eval = TRUE, echo = FALSE}
+MIDsims3 <- readRDS(file = 'MIDsims3.RDS')
+scenarios <- attr(detarg3, 'comb')
+```
+
+
+```{r MID3-table2, eval = TRUE, echo = FALSE}
+cbind(scenarios, getcounts(MIDsims3)[,-5])
+estD <- estimateSummary(MIDsims3)
+estL <- estimateSummary(MIDsims3, 'lambda0')
+estS <- estimateSummary(MIDsims3, 'sigma')
+cat('Density\n')
+cbind(scenarios, round(estD,4))
+cat('lambda0\n') 
+cbind(scenarios, round(estL,4))
+cat('sigma\n')
+cbind(scenarios, round(estS,4))
+```
+
+```{r MID3 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 6, fig.height = 6, fig.cap = "Figure: Relative bias of parameter estimates from null model when some individuals cannot be distinguished. Shaded band: |RB| < 10%. Inset shows same plot with arithmetic x-axis." }
+par(mfrow=c(1,1), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', bg = 'white', pty='s', fig = c(0,1,0,1))
+x <- scenarios$PI
+# when does RB exceed 10%?
+approx(estD$RB, x, xout=-0.1)$y 
+# [1] 0.00037487
+leg <- c('D','lambda0','sigma')
+plot(1,1,type='n', xlim=c(1e-5, 1e-2), log='x', ylim=c(-1,1), xlab = 'Probability of identity PI (log scale)', ylab='RB', axes = F)
+axis(1, at = 10^seq(-5,-2,0.5), label = c('0.00001','','0.0001','','0.001','','0.01'))
+axis(2)
+shade(0.1)
+abline(h=0, lty=2)
+addRB(x, estL, type='o', pch=21, bg = 'white')
+addRB(x, estS, type='o', pch=24, bg = 'white', star = 1.0)
+addRB(x, estD, type='o', pch=21, bg = cols[3],cex = 1.3)
+legend(0.000015, -0.6, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(cols[3],'white','white'))
+
+par(fig = c(0.09,0.4, 0.6, 0.98), mgp=c(0.5,0.5,0), new = T)  
+plot(1,1,type='n', xlim=c(0, 1e-2),  ylim=c(-1,1), xlab = 'PI', ylab='RB', axes = F)
+shade()
+abline(h=0, lty=2)
+addRB(x, estL, type='o', pch=21, bg = 'white')
+addRB(x, estS, type='o', pch=24, bg = 'white')
+addRB(x, estD, type='o', pch=16)
+axis(1, at = 10^seq(-5,-2,0.5), label = FALSE)
+```
+
+### MID4 Identical genotypes, varying density
+
+```{r MID4-table1, eval = TRUE, echo = FALSE}
+MIDsims4 <- readRDS(file = 'MIDsims4.RDS')
+scenarios <- expand.grid(PI = c(0.00, 10^(seq(-5,-2,0.5))), D = 12.5 * c(0.25,0.5,1,2,4))
+```
+
+```{r MID4-table2, eval = TRUE, echo = FALSE}
+cbind(scenarios, getcounts(MIDsims4)[,-5])
+countlegend(-5)
+estD <- estimateSummary(MIDsims4)
+estL <- estimateSummary(MIDsims4, 'lambda0')
+estS <- estimateSummary(MIDsims4, 'sigma')
+cat('Density\n')
+cbind(scenarios, round(estD,4))
+cat('lambda0\n') 
+cbind(scenarios, round(estL,4))
+cat('sigma\n')
+cbind(scenarios, round(estS,4))
+```
+
+```{r MID4 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 6, fig.height = 6, fig.cap = "Figure: Relative bias of parameter estimates from null model when some individuals cannot be distinguished. Shaded band: |RB| < 10%. " }
+par(mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', bg = 'white', pty = 's')
+x <- scenarios$PI[1:8]
+plot(1,1,type='n', xlim=c(1e-5, 1e-2), log='x', ylim=c(-1,0.5), 
+     xlab = 'Probability of identity PI (log scale)', ylab='RB', axes = F)
+axis(1, at = 10^seq(-5,-2,0.5), label = c('0.00001','','0.0001','','0.001','','0.01'))
+axis(2)
+shade(0.1)
+abline(h = 0, lty = 2)
+for (d in 1:5) {
+    addRB(x, estD[(d-1)*8 + 1:8,], type = 'o', pch = 21, cex = 1.4, bg = cols[d])
+}
+legend(0.000015, -0.55, legend = as.character(12.5 * c(0.25,0.5,1,2,4)),
+       text.width = 0.38, title = expression(paste('Density ', sigma^{-2})), 
+       pch = 21, pt.bg = cols, cex=0.85, pt.cex = 1.4)
+```
+
+From the curves in the previous figure we can interpolate the threshold PI at which relative bias of the density estimate from a null model exceeds a given threshold e.g. 5\%. We plot this as a function of the expected number of individuals detected.
+
+```{r threshold, eval = TRUE, echo = FALSE}
+par(pty = 's')
+threshold05 <- sapply(1:5, function(d) approx(estD[(d-1)*8 + 1:8,'RB'], x, xout=-0.05)$y)
+threshold10 <- sapply(1:5, function(d) approx(estD[(d-1)*8 + 1:8,'RB'], x, xout=-0.1)$y)
+n <- getcounts(MIDsims4)[seq(1,40,8),'n']
+plot(1,1,type='n', log='y', xlim=c(0,500), ylim=c(1e-5,1e-2), 
+     xlab = expression(paste('Expected number detected ', ~italic(n))), ylab = '', axes = FALSE)
+axis(2, at = 10^seq(-5,-2,0.5), label = c('0.00001','','0.0001','','0.001','','0.01'), las = 1)
+axis(1)
+mtext(side=2, line = 4, 'PI threshold')
+box()
+points(n, threshold05, pch=21, type = 'o', bg = cols, cex = 1.5)
+points(n, threshold10, pch=21, type = 'o', bg = cols, cex = 1.5)
+text(380, 2.2e-4, 'RB -10%')
+text(380, 3e-5, 'RB -5%')
+```
+
+### MID5 identical genotypes, varying detection probability
+
+```{r MID5-table1, eval = TRUE, echo = FALSE}
+MIDsims5 <- readRDS(file = 'MIDsims5.RDS')
+scenarios <- expand.grid(PI = c(0.00, 10^(seq(-5,-2,0.5))), lambda0 = c(0.05,0.1,0.2))
+```
+
+```{r MID5-table2, eval = TRUE, echo = FALSE}
+cbind(scenarios, getcounts(MIDsims5)[,-5])
+countlegend(-5)
+estD <- estimateSummary(MIDsims5)
+cat('Density\n')
+cbind(scenarios, round(estD,4))
+```
+
+```{r MID5 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 6, fig.height = 6, fig.cap = "Figure: Relative bias of parameter estimates from null model when some individuals cannot be distinguished. Shaded band: |RB| < 10%. " }
+par(mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', bg = 'white', pty = 's', fig = c(0,1,0,1))
+x <- scenarios$PI[1:8]
+plot(1,1,type='n', xlim=c(1e-5, 1e-2), log='x', ylim=c(-1,0.5), 
+     xlab = 'Probability of identity PI (log scale)', ylab='RB', axes = F)
+axis(1, at = 10^seq(-5,-2,0.5), label = c('0.00001','','0.0001','','0.001','','0.01'))
+axis(2)
+shade(0.1)
+abline(h = 0, lty = 2)
+for (l in 1:3) {
+    addRB(x, estD[(l-1)*8 + 1:8,], type = 'o', pch = 21, cex = 1.4, bg = cols2[l+1])
+}
+legend(0.000015, -0.55, legend = as.character(c(0.05,0.1,0.2)),
+       text.width = 0.38, title = 'lambda0', 
+       pch = 21, pt.bg = cols2[2:4], cex=0.85, pt.cex = 1.4)
+```
+
+## Interpretation
+
+### MID1
+
+Random mis-identification of individuals in more than about 2\% of detection events caused significant negative bias in estimates of density from the null model ($RB(\hat D) < -10\%$). The simulation model was only an approximation to study conditions as it *excluded* the possibility that mis-identification placed an individual outside the set of otherwise known individuals (i.e., as a new never-to-be-seen-again ghost individual). 
+
+### MID2
+
+Ghost individuals caused positive relative bias in density estimates on the order of 3 times their frequency of occurrence expressed as a proportion of all detections ($RB(\hat D) > +10\%$ when $\mbox{pGhost}>0.032$). The simulated high frequencies (>5\%) seem rather improbable. Estimates of $\sigma$ remained unbiased (with potentially a slight reduction in precision owing to the reduced number of recaptures).
+
+### MID3
+
+Density estimates were sensitive to the presence of identical genotypes. Any $\mbox{PI} > 0.0004$ resulted in significant negative bias ($RB(\hat D) < -10\%$). Bias is not directly attributable to a reduction in the number of distinct individuals, as this varied little at this threshold. For 110 observed individuals there are 5995 pairwise possible identities, The threshold PI corresponds to an average of just 2.4 pairs
+
+### MID4
+
+Varying true density has a large effect on the relationship between PI and bias in $\hat D$. This effect is probably due to the increased number of individuals that are detected and therefore potentially confused. Parameters of detection ($\lambda_0, \sigma$) also affect the number detected.
+
+### MID5
+
+Although varying detection probability ($\lambda_0$) in general should shift $\mbox E (n)$ and hence $\mbox{RB}(\hat D)$ for given PI, these simulations effected only a small change in $\mbox E (n)$.

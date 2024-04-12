@@ -1,0 +1,255 @@
+---
+title: "**secr** simulations OU"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Spatial autocorrelation OU
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+## Problem description
+
+SECR assumes successive detections of an individual are independent events, conditional on the location of the activity centre. The Ornstein-Uhlenbeck distribution provides a serially correlated model of animal movement that may be used to test the effect of non-independence on SECR estimates.
+
+## Settings
+
+Square grid of 64 count proximity detectors at spacing 100 m.  
+
+The same conditions were used for simulation and fitting. 
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D | 2 / ha |
+| lambda0  | NA |
+| sigma    | 100 |
+| tau      | 0.1, 1, 5, 10, 20, 50, 100 |
+| epsilon  | 10 m |
+| noccasions | 100 |
+| buffer   | 500 m |
+| nx       | 32 |
+| nrepl    | 200 |
+
+Here 'sigma' is the overall scale of the O-U distribution and 'tau' determines the serial correlation. An animal is considered to be detected when it is within 'epsilon' of a detector at one of 'noccasions' sampling occasions.
+
+## Package version, date and platform
+
+**secr** 4.6.7  
+**secrdesign** 2.9.1
+Run on Matrix 2024-03-20:
+
+## Simulation code
+
+We use a custom function to generate an 'secr' capthist object within `run.scenarios`. The detection parameter 'lambda0' is repurposed as tau, and 'noccasions' is interpreted as the number of time steps 'n.steps'. Detection happens when the location of an animal at one time step is within epsilon of a detector. The output capthist is a single-occasion sample.
+
+```{r OUcapthist}
+# OU algorithm adapted from Supplements of Ben Stevenson 2021 Biometrics paper
+simOU.capthist <- function (
+        traps,
+        popn,
+        detectpar = list(),
+        noccasions = 100,    # effective "duration"
+        epsilon,             # proximity threshold radius for detection
+        output = c('capthist', 'locations'),
+        ...)
+{
+    sim.ou <- function(mu, tau, sigma, n.steps){
+        mu <- as.numeric(mu)   # dodge issue with dataframe
+        start <- mvtnorm::rmvnorm(1, mean = mu, sigma = sigma^2*diag(2))
+        b <- -1/tau
+        v <- sigma^2
+        out <- matrix(0, nrow = n.steps, ncol = 2)
+        out[1, ] <- start
+        for (i in 2:n.steps){
+            out[i, ] <- mvtnorm::rmvnorm(1, 
+                                         mean = mu + exp(b) * (out[i - 1, ] - mu),
+                                         sigma = v * (1 - exp(2*b)) * diag(2))
+        }
+        out
+    }
+    captfn <- function (xy) {
+        loc.capt <- secr::edist(xy,traps) <= epsilon
+        apply(loc.capt, 2, sum)
+    }   
+    output <- match.arg(output)
+    N <- nrow(popn)
+    tau <- detectpar$lambda0
+    sigma <- detectpar$sigma
+    n.steps <- noccasions
+    locs <- apply(popn, 1, sim.ou, tau, sigma, n.steps, simplify = FALSE)
+    if (output == 'locations') {
+        return(locs)
+    }
+    else {
+        capt <- t(sapply(locs, captfn))
+        ch <- array(capt, dim = c(N,1,ncol(capt)), dimnames = list(1:N,NULL,NULL))
+        ch <- ch[apply(ch, 1, sum) > 0,,, drop = FALSE]   # drop null histories
+        class(ch) <- 'capthist'
+        traps(ch) <- traps
+        return(ch)
+    }
+}
+```
+
+```{r OU initial, eval = TRUE, message = FALSE, results = "hide"}
+source('../setup.R')
+grid   <- make.grid(nx = 8, ny = 8, spacing = 100, detector = "count")
+detarg <- list(epsilon = 10)
+nstep  <- 100
+fitarg <- list(mask = make.mask(grid, buffer = 500, type = 'trapbuffer'), 
+               detectfn = 'HHN', binomN = nstep,
+               start = list(lambda0 = 1))  # tau is bad start for true lambda0
+# values of lambda0 become values of OU parameter 'tau'
+taulevels <- c(0.1, 1, 5, 10, 20, 50, 100)
+scen <- make.scenarios( D = 2, lambda0 = taulevels, sigma = 100, 
+                        noccasions = nstep, detectfn = 14)
+```
+
+```{r OUcode, eval = FALSE}
+OUsims <- run.scenarios(
+    nrepl       = 500, 
+    scenarios   = scen, 
+    trapset     = grid, 
+    det.args    = detarg, 
+    fit         = TRUE, 
+    fit.args    = fitarg, 
+    CH.function = "simOU.capthist", 
+    seed        = 12345)
+saveRDS(OUsims, file = 'OUsims.RDS')
+```
+
+## Results
+
+First display some examples of movement tracks.
+```{r OU demo1, eval = TRUE, results = "hide", fig.width=7, fig.height=7, fig.cap = "Figure: Examples of correlated movement paths over 100 time steps. Red dot is activity centre; grey circle is 95% contour of activity."}
+par(mfrow=c(2,2), mar = c(1,1,2,1), pty='s')
+set.seed(123)
+for (tau in c(0.1,1,10,100)) {
+    locs <- simOU.capthist(grid, matrix(c(0,0), nrow=1), detectpar = list(lambda0 = tau, sigma = 100), 
+                           noccasions = 100, epsilon=10, output = 'locations')
+    plot (locs[[1]], type='o', xlim=c(-350,350), ylim = c(-350,350), axes=F, xlab='', ylab='')
+    mtext(side = 3, paste('tau = ', tau))
+    points(0,0, pch = 16, col='red', cex = 1.2)
+    box()
+    symbols(0,0,circles=245,inches=FALSE, add = TRUE, fg = grey(0.8))
+}
+```
+
+```{r OU demo2, eval = FALSE, echo = FALSE}
+# a whole population of autocorrelated walks
+popn <- sim.popn(D = 1, core = grid, buffer = 500)
+locs <- simOU.capthist(grid, popn, detectpar = list(lambda0 = 100, sigma = 100), 
+                       noccasions = 100, epsilon=10, output = 'locations')
+
+par(mfrow=c(1,1), mar=c(1,1,1,1))
+plot(popn)
+mapply(points, locs, type = 'o', col = 1:length(locs))
+plot(traps, add=T)
+```
+
+```{r OU rpsv, cache = TRUE, echo = FALSE, fig.width=6, fig.height=6, fig.cap = "Figure: Bivariate normal sigma for varying tau and n.steps", eval = TRUE}
+RPSVxy <- function(xy) {
+    n <- nrow(xy)
+    ss <- function (x) sum(x^2) - (sum(x))^2/n
+    sqrt(sum(apply(xy,2,ss))/(2 * (n-2)))
+}
+set.seed(12345)
+popn <- sim.popn(D = 1, core = grid, buffer = 500)  # a set of AC
+onetau <- function (tau, n.steps) {
+    locs <- simOU.capthist(grid, popn, detectpar = list(lambda0 = tau, sigma = 100), 
+                           noccasions = n.steps, epsilon=10, output = 'locations')
+    mean(sapply(locs, RPSVxy))
+}
+tauval <- 10^seq(-0.5,4,0.5)
+steps <- c(20, 100, 500)
+par(mfrow = c(1,1), mar = c(5,4,4,4))
+plot(1,1,type='n', xlim=range(tauval), log='x', ylim=c(0,120), xlab = 'tau', ylab = 'Sigma-hat')
+for (i in 1:length(steps)) {
+    out <- sapply(tauval, onetau, steps[i])
+    lines(tauval, out, pch = 15+i, type = 'b')
+}
+legend(800, 110, legend = steps, lty = 1, pch = 16:18, title = 'n.steps')
+```
+
+Check the mean sample sizes for each scenario
+```{r OUdatasummary, eval = TRUE, echo = FALSE, results = 'hold'}
+OUsims <- readRDS(file = 'OUsims.RDS')
+counts <- t(sapply(OUsims$output, function(x) apply(sapply(x, attr, 'counts'),1,mean)))
+taulevels <- c(0.1, 1, 5, 10, 20, 50, 100)
+cbind(tau = taulevels, counts[,1:4])
+df <- data.frame(Variable = c('tau','n','r','nmov','dpa'), 
+           Definition = c('Autocorrelation parameter', 
+                          'Number of inndividuals', 
+                          'Number of recaptures', 
+                          'Number of movements', 
+                          'Detectors per individual'))
+print(df, row.names=FALSE, right = FALSE)
+```
+
+```{r OU tables, eval = TRUE, echo = FALSE}
+options(width=100)
+taulevels <- c(0.1, 1, 5, 10, 20, 50, 100)
+OUsims <- readRDS(file = 'OUsims.RDS')
+cat('Density\n')
+cbind(tau = taulevels, round(estimateSummary(OUsims)[,-1],4))
+cat('lambda0\n')
+cbind(tau = taulevels, round(estimateSummary(OUsims, 'lambda0', 
+    statistics = c("true", "nvalid", "EST", "seEST"))[,-1],4))
+cat('sigma\n')
+cbind(tau = taulevels, round(estimateSummary(OUsims, 'sigma')[,-1],4))
+```
+
+```{r OUfigures, echo = FALSE, fig.height = 3, fig.width=8, out.width="90%", fig.cap = "Figure: Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for null-model density estimates from Ornstein-Uhlenbeck model with autocorrelation parameter $\tau$."}
+OUsims <- readRDS(file = 'OUsims.RDS')
+estD <- estimateSummary(OUsims)[,-1]
+estS <- estimateSummary(OUsims, 'sigma')[,-1]
+taulevels <- c(0.1, 1, 5, 10, 20, 50, 100)[-1]
+par(mfrow=c(1,3), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', pty='s')
+plot(0.1,0,type='n', xlim=c(1,100), log='x', ylim=c(-0.6,0.4), xlab = expression(tau), ylab='RB')
+abline(h=0, lty=2)
+addRB(taulevels, estD[-1,], type='o', pch=16)
+addRB(taulevels, estS[-1,], type='o', pch=1)
+legend(1.2, -0.39, legend=c('D','sigma'), pch=c(16,1))
+
+plot(0.1,0,type='n', xlim=c(1,100), log='x', ylim=c(0,0.2), xlab = expression(tau), ylab='RSE')
+points(taulevels, estD$RSE[-1], type='o', pch=1)
+
+plot(0.1,0,type='n', xlim=c(1,100), log='x', ylim=c(0.5,1), xlab = expression(tau), ylab='COV')
+points(taulevels, estD$COV[-1], type='o', pch=1)
+abline(h=0.95, lty = 2)
+```
+
+## Interpretation
+
+In these simulations autocorrelation was damaging ($|\mbox{RB}(\hat D)| > 0.05$ only when $\tau \ge 50$. This suggests that autocorrelation *per se* is not a problem; it is possible some other effect comes into play for large $\tau$.
+
+## One-off
+
+Run this code to obtain results for a single scenario. 
+```{r OU oneoff, eval = FALSE, message = FALSE, warning = FALSE, results = "hide"}
+source('../setup.R')
+<<OUcapthist>>
+grid   <- make.grid(nx = 8, ny = 8, spacing = 100, detector = "count")
+detarg <- list(epsilon = 10)
+nstep  <- 100
+fitarg <- list(mask = make.mask(grid, buffer = 500, type = 'trapbuffer'), binomN = nstep,
+               detectfn = 'HHN', start = list(lambda0 = 1))  # tau is bad start for true lambda0
+# values of lambda0 become values of OU parameter 'tau'
+scen <- make.scenarios( D = 2, lambda0 = 50, sigma = 100, noccasions = nstep, detectfn = 14)
+oneoff <- run.scenarios(nrepl = 100, scen, trapset = grid, det.args = detarg, 
+    fit = TRUE, fit.args = fitarg, CH.function = "simOU.capthist", seed = 12345)
+```
+

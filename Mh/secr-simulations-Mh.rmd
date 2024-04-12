@@ -1,0 +1,202 @@
+---
+title: "**secr** simulations"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Individual heterogeneity in detection parameters $\lambda_0$ and $\sigma$ Mh
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+Variation among individuals in the probability of detection is a known cause of bias in many domains of capture--recapture.  
+
+## Problem description
+
+The SECR null model assumes $\lambda_0$ and $\sigma$ are the same across individuals. We generate data with heterogeneous $\lambda_0$ and $\sigma$, and examine estimates from a null model.
+
+## Settings
+
+Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.  
+
+The same conditions used for simulation and fitting.
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D | $12.5 \sigma^{-2}$ |
+| mean lambda0  | 0.1 |
+| mean sigma    | c/2 |
+| noccasions | 10 |
+| buffer   | $8\sigma$ |
+| nx       | 64 |
+
+## Package version, date and platform
+
+**secr** 4.6.7  
+**secrdesign** 2.9.1 
+
+R version 4.3.2 (2023-10-31 ucrt)  
+Platform: x86_64-w64-mingw32/x64 (64-bit)  
+Running under: Windows 11 x64 (build 22631)  
+
+## Simulation code
+
+### Define Mh scenarios
+
+This function draws unique levels of the detection parameters from a log-normal distribution for each member of a simulated population when used as the 'covariates' argument of `sim.popn`. An inelegant numerical procedure is used to determine the mean log-normal $\sigma^2$ corresponding to a desired mean $\sigma$.
+```{r popnCV}
+popn.covariates <- function (animals, ...) {
+    arg <- list(...)
+    getmeanx2 <- function (cv = 0.6, mn = 20) {
+        f <- function (x, mean, cv) {
+            sdlog <- log(cv^2 + 1)^0.5
+            meanlog <- log(mean) - sdlog^2/2
+            x^0.5 * dlnorm(x, meanlog, sdlog)
+        }
+        f2 <- function (y) (integrate(f, 0, Inf, mean = y, cv = cv)$value - mn) 
+        if (cv==0) mn^2 else uniroot(f2, interval=c(0, 1000))$root
+    }
+    CVl <- if (is.null(arg$CVlambda0)) 0 else arg$CVlambda0
+    CVs <- if (is.null(arg$CVsigma2)) 0 else arg$CVsigma2
+    mnl <- arg$lambda0
+    mns <- getmeanx2(cv = arg$CVsigma2, mn = arg$sigma)
+    n <- nrow(animals)
+    data.frame(lambda0 = secr::rlnormCV(n, mnl, CVl),
+               sigma = secr::rlnormCV(n, mns, CVs)^0.5)
+}
+```
+
+The population arguments passed to run.scenarios include the mean and CV of each detection parameter.
+
+```{r Mh scenarios, eval = TRUE, message = FALSE, results = "hide"}
+source('../setup.R')
+grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
+poparg <- c(expand.arg(covariates = "popn.covariates", 
+                       lambda0    = 0.1, 
+                       sigma      = 20, 
+                       CVlambda0  = seq(0,0.8,0.2), 
+                       CVsigma2   = 0),
+            expand.arg(covariates = "popn.covariates", 
+                       lambda0    = 0.1, 
+                       sigma      = 20, 
+                       CVlambda0  = 0,
+                       CVsigma2   = seq(0.2,0.8,0.2)))
+detarg <- list(detectpar = list(individual = TRUE))
+fitarg <- list(detectfn = 'HHN', model = lambda0 ~ 1)
+scen <- make.scenarios(
+    D          = 12.5, 
+    noccasions = 10, 
+    detectfn   = 14, 
+    lambda0    = 0.1, 
+    sigma      = 20, 
+    popindex   = 1:length(poparg), 
+    fitindex   = 1)
+```
+
+### Run Mh simulations
+
+```{r Mh-run, eval = FALSE}
+Mhsims <- run.scenarios(
+    nrepl     = 500, 
+    scenarios = scen, 
+    trapset   = grid, 
+    fit       = TRUE, 
+    pop.args  = poparg, 
+    det.args  = detarg, 
+    fit.args  = fitarg, 
+    seed      = 12345, 
+    xsigma    = 8, 
+    nx        = 64)
+saveRDS(Mhsims, file = 'Mhsims.RDS')
+```
+
+## Results
+
+First check the mean sample sizes for each scenario
+```{r Mhdatasummary, eval = TRUE, echo = FALSE}
+Mhsims <- readRDS(file = 'Mhsims.RDS')
+counts <- t(sapply(Mhsims$output, function(x) apply(sapply(x, attr, 'counts'),1,mean)))
+cvlevels <- header(Mhsims)$pop.args[,5:6]
+cbind(cvlevels, counts[,1:4])
+```
+
+```{r Mh tables, eval = TRUE, echo = FALSE, results = "hold"}
+options(width=110, digits=4)
+Mhsims <- readRDS(file = 'Mhsims.RDS')
+estD <- estimateSummary(Mhsims)[,-1]
+estL <- estimateSummary(Mhsims, 'lambda0')[,-1]
+estS <- estimateSummary(Mhsims, 'sigma')[,-1]
+cat('Density\n')
+cbind(cvlevels, estD)
+cat('lambda0\n') 
+cbind(cvlevels, estL)
+cat('sigma\n')
+cbind(cvlevels, estS)
+```
+ 
+```{r Mh figure, eval = TRUE, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given individual variation" }
+Mhsims <- readRDS(file = 'Mhsims.RDS')
+estD <- estimateSummary(Mhsims)[,-1]
+estL <- estimateSummary(Mhsims, 'lambda0')[,-1]
+estS <- estimateSummary(Mhsims, 'sigma')[,-1]
+x <- seq(0,0.8,0.20)
+leg <- c('D', 'lambda0', 'sigma')
+cvltext <- expression(paste("CV( ", lambda[0], " )"))
+cvstext <- expression(paste("CV( ", sigma^2, " )"))    
+
+par(mfrow=c(1,2), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o')
+
+plot(0,0,type='n', xlim=c(0,0.8), ylim=c(-0.4,0.5), xlab = cvltext, ylab='RB')
+abline(h=0, lty=2)
+addRB(x, estL[1:5,], type='o', pch=21, bg = 'white')
+addRB(x, estS[1:5,], type='o', pch=24, bg = 'white')
+addRB(x, estD[1:5,], type='o', pch=16)
+legend(0, 0.48, legend=leg, pch=c(16,1,2), cex = 1)
+
+plot(0,0,type='n', xlim=c(0,0.8), ylim=c(-0.4,0.5), xlab = cvstext, ylab='RB')
+abline(h=0, lty=2)
+addRB(x, estL[c(1,6:9),], type='o', pch=21, bg = 'white')
+addRB(x, estS[c(1,6:9),], type='o', pch=24, bg = 'white')
+addRB(x, estD[c(1,6:9),], type='o', pch=16)
+legend(0, 0.48, legend=leg, pch=c(16,1,2), cex = 1)
+```
+
+## Interpretation
+
+Estimates of density from the null model are moderately sensitive to individual variation in $\lambda_0$ and highly sensitive to individual variation in $\sigma$ of the same magnitude. Greater sensitivity to CV($\sigma$) is expected because the effective sampling area is a function of $\sigma^2$.  $\mbox{RB}(\hat \lambda_0)$ closely tracks $\mbox{RB}(\hat D)$ for varying $\mbox{CV}(\sigma)$.
+
+## One-off
+
+Run this code to obtain results for a single scenario (here CV(lambda0) = 0.6). Here we fit both a null model (lambda0~1) and a 2-class finite mixture model (lambda0~h2). The mixture model performed well in terms of bias (-0.4\%) and confidence interval coverage (93\%), with two caveats: not all datasets yielded estimates, and the precision of the estimates was greatly reduced (relative standard error increased from 0.11 to 0.30).
+
+```{r Mh oneoff, eval = TRUE, cache = TRUE, warning = FALSE, message = FALSE}
+source('../setup.R')
+grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
+poparg <- list(covariates = popn.covariates, lambda0 = 0.1, sigma = 20, CVlambda0 = 0.6, CVsigma2 = 0)
+detarg <- list(detectpar = list(individual = TRUE))
+fitarg <- list(
+    list(detectfn = 'HHN', model = lambda0 ~ 1),
+    list(detectfn = 'HHN', model = lambda0 ~ h2)
+)
+scen <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
+    lambda0 = 0.1, sigma = 20, popindex = 1, fitindex = 1:2)
+oneoff <- run.scenarios(nrepl = 100, scen, trapset = grid, pop.args = poparg, 
+    det.args = detarg, fit = TRUE, fit.args = fitarg, seed = 12345)
+# select density estimates from output
+Dstats <- select.stats(oneoff, 'D', c('estimate','SE.estimate', 'RB','RSE','COV'))
+# reject estimates with extreme SE.estimate, and summarise
+summary(validate(Dstats, 'SE.estimate', c(0.001,100), 'all'))$OUTPUT
+```
+

@@ -1,0 +1,175 @@
+---
+title: "**secr** simulations Mt"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Temporal variation in detection parameters Mt
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+Temporal variation is generally not thought to be a problem for SECR estimates of density (Sollmann 2024). These simulations extend the empirical basis for the conclusion.
+
+## Problem description
+
+The SECR null model assumes $\lambda_0$ and $\sigma$ are constant over occasions. We vary these parameters and examine the resulting estimates from a null model.
+
+## Settings
+
+Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.  
+
+The same conditions were used for simulation and fitting. 
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D | $12.5 \sigma^{-2}$ |
+| lambda0  | 0.1 |
+| sigma    | c/2 |
+| noccasions | 10 |
+| buffer   | $4\sigma$ |
+| nx       | 32 |
+
+## Package version, date and platform
+
+**secr** 4.6.7
+
+**secrdesign** 2.9.0
+
+R version 4.3.2 (2023-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 11 x64 (build 22631)
+
+## Simulation code
+
+### Custom function to simulate capture histories
+
+We vary the time-specific detection parameters at each replicate, using a log-normal random variate to keep values positive.
+
+```{r Mt capthist}
+source('../setup.R')
+simCV.capthist <- function (detectpar = list(), CVlambda0 = 0, CVsigma =0, ...)
+{
+    nocc <- list(...)$noccasions
+    if (CVlambda0>0) 
+        detectpar$lambda0 <- secr::rlnormCV(nocc, detectpar$lambda0, CVlambda0)
+    if (CVsigma>0) 
+        detectpar$sigma <- secr::rlnormCV(nocc, detectpar$sigma, CVsigma)
+    sim.capthist(detectpar = detectpar, ...)
+}
+```
+
+Visualising the parameter distributions:
+
+```{r Mt demo}
+par(mfrow=c(1,2))
+cvlevels <- c(0.1, 0.2, 0.3, 0.4)
+lam0 <- lapply(cvlevels, secr::rlnormCV, n = 10000, mean = 0.1)
+sig <- lapply(cvlevels, secr::rlnormCV, n = 10000, mean = 20)
+boxplot(lam0, ylim=c(0,0.4), names = cvlevels, xlab = 'CV', ylab = 'lambda0')
+boxplot(sig, ylim=c(0,60), names = cvlevels, xlab = 'CV', ylab = 'sigma')
+```
+
+### Define Mt scenarios
+
+```{r Mt scenarios, eval = TRUE, message = FALSE, results = "hide"}
+grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
+detarg <- c(expand.arg(CVlambda0 = seq(0,0.4,0.1), CVsigma = 0),
+            expand.arg(CVlambda0 = 0, CVsigma = seq(0.1,0.4,0.1)))
+fitarg <- expand.arg(detectfn = 'HHN', model = c(lambda0 ~ 1,lambda0 ~ t))
+# Mean lambda0 and sigma in scenario (used as reference for RB etc.)
+# CV is provided by detarg and used by simCV.capthist
+# ignore model ~t for now
+scen <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
+    lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg), fitindex = 1)
+```
+
+### Check empirical CV of counts per occasion
+
+```{r Mt counts, echo = TRUE, eval = TRUE, cache = TRUE, message = FALSE}
+Mtraw <- run.scenarios(nrepl = 100, scen, trapset = grid, det.args = detarg, 
+    CH.function = "simCV.capthist", fit = FALSE, seed = 12345, extractfn = identity)
+# average CV(detections) for each scenario
+cvt <- function(y) CV(apply(y,2,sum))  # temporal CV(detections)
+CVmat <- sapply(Mtraw$output, function (x) sapply(x, cvt))
+apply(CVmat,2,mean)
+```
+
+### Run Mt simulations
+
+```{r Mt run, eval = FALSE}
+Mtsims <- run.scenarios(nrepl = 200, scen, trapset = grid, det.args = detarg, 
+    CH.function = "simCV.capthist", fit = TRUE, fit.args = fitarg, seed = 12345)
+saveRDS(Mtsims, file = 'Mtsims.RDS')
+```
+
+## Results
+
+```{r Mt tables, eval = TRUE, echo = FALSE, results = "hold"}
+options(width=110, digits=4)
+Mtsims <- readRDS(file = 'Mtsims.RDS')
+estD <- estimateSummary(Mtsims)[,-1]
+estL <- estimateSummary(Mtsims, 'lambda0')[,-1]
+estS <- estimateSummary(Mtsims, 'sigma')[,-1]
+cvl <- c(0,0.1,0.2,0.3,0.4,0,0,0,0)
+cvs <- c(0,0,0,0,0,0.1,0.2,0.3,0.4)
+cat('Density\n')
+cbind(CVlambda0 = cvl, CVsigma = cvs, estD)
+cat('lambda0\n') 
+cbind(CVlambda0 = cvl, CVsigma = cvs, estL)
+cat('sigma\n')
+cbind(CVlambda0 = cvl, CVsigma = cvs, estS)
+```
+ 
+```{r Mt figure, eval = TRUE, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given temporal variation in lambda0 or sigma" }
+Mtsims <- readRDS(file = 'Mtsims.RDS')
+estD <- estimateSummary(Mtsims)[,-1]
+estL <- estimateSummary(Mtsims, 'lambda0')[,-1]
+estS <- estimateSummary(Mtsims, 'sigma')[,-1]
+par(mfrow=c(1,2), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o')
+x <- seq(0,0.4,0.1)
+
+plot(0,0,type='n', xlim=c(0,0.4), ylim=c(-0.4,0.4), xlab = 'CV(lambda0)', ylab='RB')
+abline(h=0, lty=2)
+addRB(x, estD[1:5,], type='o', pch=16)
+addRB(x, estL[1:5,], type='o', pch=21, bg='white')
+addRB(x, estS[1:5,], type='o', pch=24, bg='white')
+legend(0.01, 0.39, legend=c('D','lambda0','sigma'), pch=c(16,1,2))
+
+plot(0,0,type='n', xlim=c(0,0.4), ylim=c(-0.4,0.4), xlab = 'CV(sigma)', ylab='RB')
+abline(h=0, lty=2)
+addRB(x, estD[c(1,6:9),], type='o', pch=16)
+addRB(x, estL[c(1,6:9),], type='o', pch=21, bg='white')
+addRB(x, estS[c(1,6:9),], type='o', pch=24, bg='white')
+legend(0.01, 0.39, legend=c('D','lambda0','sigma'), pch=c(16,1,2))
+```
+
+## Interpretation
+
+Estimates of density from the null model are indeed robust to temporal variation in $\lambda_0$ or $\sigma$, but variation in $\sigma$ drives complementary bias in $\hat \lambda_0$ and $\hat \sigma$
+
+## One-off
+
+Run this code to obtain results for a single scenario (here CV(lambda0) = 1). Re-uses code in chunk 'Mt capthist'.
+```{r MT oneoff, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE}
+<<Mt capthist>> 
+grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
+detarg <- list(detectpar = list(CVlambda0 = 1, CVsigma = 0))
+fitarg <- list(detectfn = 'HHN')  # null model
+scen <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, lambda0 = 0.1, sigma = 20)
+oneoff <- run.scenarios(nrepl = 100, scen, trapset = grid, det.args = detarg, 
+    CH.function = "simCV.capthist", fit = TRUE, fit.args = fitarg, seed = 12345)
+summary(oneoff)
+```

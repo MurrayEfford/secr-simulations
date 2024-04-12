@@ -1,0 +1,185 @@
+---
+title: "**secr** closure simulations"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Closure CLO
+
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+## Problem description
+
+Effect of non-closure due to *in situ* births and deaths on density estimated by SECR for studies of different duration. Activity centres fixed.
+
+## Settings
+
+Square grid of 64 binary proximity detectors at 3000-m spacing.  
+
+The same conditions used for simulation and fitting. 
+Weekly 'sessions' were joined in `run.scenarios` for the final single-session analysis.
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D | 0.001 (0.1/km^2^) |
+| lambda0  | 0.2 per week |
+| sigma    | 2000 m |
+| lambda   | 1.0 (no trend in density) |
+| phi      | 0.5 per annum |
+| noccasions | 4-24 weeks |
+| buffer   | 10000 m |
+
+## Package version, date and platform
+
+**secr** 4.6.6  
+**secrdesign** 2.9.0
+
+Run on Matrix 2024-03-01:
+
+R version 4.3.0 (2023-04-21)  
+Platform: x86_64-pc-linux-gnu (64-bit)  
+
+## Simulation code
+
+```{r CLO initial, eval = TRUE, message = FALSE, results = "hide"}
+source('../setup.R')
+nrepl  <- 1000
+nocc   <- seq(4,24,4)
+phi    <- c(0.5,0.75, 1.0)
+phiw   <- exp(log(phi)/52)   # convert annual to weekly survival
+grid   <- make.grid(nx = 8, ny = 8, spacing = 3000, detector = "proximity")
+poparg <- expand.arg(
+    buffer     = 10000, 
+    D          = 0.001, 
+    noccasions = nocc, 
+    lambda     = 1, 
+    phi        = phiw, 
+    sublist = list(details=c('lambda','phi')))
+
+# use lambda0 = 0.2 as approx weekly equiv daily 0.03
+detarg <- list(traps = grid, detectfn = 'HHN', detectpar = list(lambda0 = 0.2, sigma = 2000),
+               renumber = FALSE, noccasions = 1)
+fitarg <- list(mask = make.mask(grid, buffer = 10000, type = 'trapbuffer'), detectfn = 'HHN')
+
+scen <- make.scenarios(D = 0.001, noccasions = 1, detectfn = 'HHN', lambda0 = 0.2, 
+                        sigma = 2000, popindex=1:length(poparg))
+```
+
+```{r CLO code1, eval = FALSE}
+CLOcounts <- run.scenarios(nrepl = nrepl, scen, trapset = grid, pop.args = poparg, 
+                           det.args = detarg, joinsessions = TRUE, seed = 12345)
+
+CLOsims <- run.scenarios(nrepl = nrepl, scen, trapset = list(grid), pop.args = poparg, 
+                         det.args = detarg, joinsessions = TRUE, fit = TRUE, 
+                         fit.args = fitarg, seed = 12345)
+
+saveRDS(CLOcounts, file = 'CLOcounts.RDS')
+saveRDS(CLOsims, file = 'CLOsims.RDS')
+```
+
+## Results
+
+```{r CLO results1, echo = FALSE} 
+CLOcounts <- readRDS('CLOcounts.RDS')
+CLOsims <- readRDS('CLOsims.RDS')
+# header(CLOsims)
+outraw  <- summary(CLOcounts)$OUTPUT
+out  <- summary(CLOsims)$OUTPUT
+Dhat <- sapply(out, '[', 'estimate','mean')
+RB   <- sapply(out, '[', 'RB','mean')
+RSE  <- sapply(out, '[', 'RSE','mean')
+COV  <- sapply(out, '[', 'COV','mean')
+n <- sapply(outraw, '[', 'n','mean')
+r <- sapply(outraw, '[', 'r','mean')
+m <- sapply(outraw, '[', 'nmov','mean')
+```
+
+Runtime for `r CLOsims$nrepl` replicates using `r nc` cores was `r round(CLOsims$proctime/60)` minutes.
+
+```{r CLO tables1, echo = FALSE}
+data.frame(Days = nocc*7, Survival = phiw^52, n=n, r=r, m=m, RB=RB, RSE=RSE, COV = COV)
+```
+
+Fitting a linear regression to RB as a function of duration we get:
+```{r CLO coef, echo = FALSE}
+phi0 <- 1:6
+phi1 <- 7:12
+phi2 <- 13:18
+model0 <- lm(I(RB[phi0]) ~ I(nocc*7))
+model1 <- lm(I(RB[phi1]) ~ I(nocc*7))
+model2 <- lm(I(RB[phi2]) ~ I(nocc*7))
+df <- data.frame(phi, rbind(coef(model0), coef(model1), coef(model2)))
+names(df) <- c('survival', 'intercept', 'slope')
+df$dailymort <- 1 - phi^(1/365)
+df$ratio <- df$slope / df$daily
+```
+
+```{r CLO figures1, echo = FALSE, fig.height = 3, fig.width=7, out.width="100%", fig.cap = "Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for density estimates from studies of varying duration. Annual survival 50% (open circles), 75% (filled circles) or 100% (triangles). Horizontal lines for reference only."}
+par(mfrow=c(1,3), mar=c(3,4,1,1), pty='s')
+plot(0,0,type='n', ylim=c(-0.05,0.3), xlim=c(0,365/2), xlab = 'Duration (days)', ylab='RB', xaxs = 'i')
+abline(model0, col='grey')
+abline(model1, col='grey')
+abline(model2)
+points(nocc*7, RB[phi0])
+points(nocc*7, RB[phi1], pch = 16)
+points(nocc*7, RB[phi2], pch = 2)
+abline(h=0, lty=2, col='grey')
+
+plot(0,0,type='n',ylim=c(0,0.3), xlim=c(0,365/2), xlab = 'Duration (days)', ylab='RSE', xaxs = 'i')
+points (nocc*7, RSE[phi0])
+points (nocc*7, RSE[phi1], pch=16)
+points(nocc*7, RSE[phi2], pch = 2)
+abline(h=0.1, col='grey')
+
+plot(0,0,type='n',ylim=c(0,1), xlim=c(0,365/2), xlab = 'Duration (days)', ylab='COV', xaxs = 'i')
+points(nocc*7, COV[phi0])
+points(nocc*7, COV[phi1], pch = 16)
+points(nocc*7, COV[phi2], pch = 2)
+abline(h=0.95, lty=2, col='grey')
+```
+
+## Interpretation
+
+Turnover in a constant population results in positive bias in density estimates on the order of the mortality rate. The daily increase in bias is approximately 70\% of the daily mortality ($1 - \phi^{1/365}$).
+
+Increasing sample size resulted in a small reduction in the estimated sampling variance, but improvement was negligible after 12 weeks. Conversely, the coverage of confidence intervals was OK for durations up to 12 weeks ($\phi = 0.75$) or 8 weeks ($\phi = 0.5$), but poor thereafter.
+
+```{r CLO df, echo = FALSE}
+round(df,5)
+```
+
+Results are specific to a population with no upward or downward trend.
+
+## One-off
+
+Run this code to obtain results for a single scenario. Requires secrdesign $\ge$ 2.9.0.
+```{r CLO oneoff, eval = FALSE, message = FALSE, warning = FALSE, results = "hide"}
+source('../setup.R')
+nsess  <- 12  # weeks
+phi    <- 0.5  # annual survival
+phiw   <- exp(log(phi)/52)   # convert annual to weekly survival
+grid   <- make.grid(nx = 8, ny = 8, spacing = 3000, detector = "proximity")
+poparg <- list(core = grid, buffer = 10000, D = 0.001, nsessions = nsess, 
+               details = list(lambda = 1, phi = phiw))
+detarg <- list(traps = grid, detectfn = 'HHN', detectpar = list(lambda0 = 0.2, sigma = 2000),
+               renumber = FALSE, noccasions = 1)
+fitarg <- list(mask = make.mask(grid, buffer = 10000, type = 'trapbuffer'), detectfn = 'HHN')
+scen   <- make.scenarios( D = 0.001, noccasions = 1, detectfn = 'HHN', lambda0 = 0.2, sigma = 2000)
+sims1  <- run.scenarios(nrepl = 100, scen, trapset = list(grid), pop.args = poparg, det.args = detarg, 
+                      joinsessions = TRUE, fit = TRUE, fit.args = fitarg, seed = 12345)
+summary(sims1)
+```

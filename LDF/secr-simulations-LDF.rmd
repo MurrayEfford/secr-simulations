@@ -1,0 +1,326 @@
+---
+title: "**secr** simulations LDF"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Latent Detection Field LDF
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+Stevenson et al. (2021) proposed a framework for spatial variation in detection probability that incorporates both individual heterogeneity and spatial (detector-specific) variation in detection conditional on AC. Log detection hazard at the $K$ detectors is modelled as multivariate normal, with a covariance structure such as  
+$$\sum_{jj'} = \sigma_u^2 \exp\{-d(\vec x_j), \vec x_{j'})/\rho^2\}$$
+where $\sigma_u^2$ is the marginal variance and $\rho$ determines the spatial scale of correlation among detectors. 
+
+| Case | Label | Interpretation |
+|:---------|:---------------------|:-----------------|
+| $\sigma_u = 0$ | Special case I, "none" | no heterogeneity, individuals or detectors |
+| $\sigma_u > 0, \rho = 0$ | Special case II, "independent", "overdispersed" | overdispersed detections per detector |
+| $\sigma_u > 0, \rho \to \infty$ | Special Case III, "individual" | individual heterogeneity |
+
+The primary scenarios considered by Stevenson et al. (2021) and Moqanaki et al. (2021) differed as follows:
+
+| Variable | Moqanaki et al. (2021) | Dey et al (2023) | Stevenson et al. (2021) |
+|:---------------|:-----------------|:-------------------|:---------------------|
+| detections | binary (Bernoulli) | binary (Bernoulli) | Poisson |
+| occasions | 1 | 1 | 1 |
+| grid | large 20 x 20 | larger 32 x 32 | small paired 4 x 4 |
+| method | data augmentation | data augmentation |MLE |
+| model | probability | probability | hazard |
+| parameters | $\phi, \beta_0, \beta_X, \sigma$ | $\phi, \eta = g_0, \sigma$ | $\sigma_u, \rho, \lambda_0, \sigma$ | 
+| auto-covariance | ~sq-exponential | exponential | sq-exponential |
+|  | $\sum_{jj'} = \exp\{-\phi \, d(\vec x_j, \vec x_{j'}) \}$  | $\sum_{jj'} = \exp\{-\phi \, d(\vec x_j, \vec x_{j'}) \}$  | $\sum_{jj'} = \sigma_u^2 \exp\{-d(\vec x_j, \vec x_{j'})^2/\rho^2\}$ |
+| random effect | $X \sim \mbox{MVN}(0,\Sigma)$, $p_{ij} = \mbox{logit}^{-1}(\beta_0 + \beta_{\vec X} \vec X_j) f(d_{ij})$ | $X \sim \mbox{MVN}(\mbox{logit}(\eta),\Sigma)$, $p_{ij} = \mbox{logit}^{-1}(\vec X_j) f(d_{ij})$ | $X \sim \mbox{MVN}(0,\Sigma))$ , $\lambda_{ij} = \lambda_0 \exp(X_{ij}) f(d_{ij})$ |
+| continuous/categorical | both | both | continuous |
+| individual effect | no | no | yes |
+| scaled | X? | no | no |
+| pattern validation | Moran's I | none | none |
+
+@Hooten2024 independently described a Bayesian implementation that also depended on a latent detection field unique to each individual.
+
+## Problem description
+
+We wish to reproduce the simulation results of Stevenson et al. (2021) for a range of values of  $\sigma_u$ and $\rho$, and extend them to the case that the LDF is shared across individuals.
+
+## Settings
+
+
+## Package version, date and platform
+
+
+## Simulation code
+
+We assume a single occasion.
+
+```{r LDF code}
+source('../setup.R')
+simLDF.capthist <- function (traps, popn, detectfn, detectpar, noccasions = 1, 
+                             cov.structure, sigma.u, rho, adjustmu = TRUE, shared = FALSE, ...)
+{
+    K <- nrow(traps)
+    N <- nrow(popn)
+    ac.dists   <- secr::edist(popn, traps)     # activity centres to traps
+    trap.dists <- secr::edist(traps,traps)     # between traps
+    # "baseline" encounter rates
+    if (detectfn == 14 || detectfn == "HHN"){
+        base.er <- detectpar$lambda0*exp(-ac.dists^2/(2*detectpar$sigma^2))
+    } 
+    else if (detectfn == 16 || detectfn == "HEX"){
+        base.er <- detectpar$lambda0*exp(-ac.dists/detectpar$sigma)
+    } 
+    else stop ("detectfn not implemented")
+    
+    ## Constructing covariance matrix
+    # adjust mu.u so E(exp(u.mat[i,j])) = 1.0
+    if (adjustmu)
+        mu.u <- - sigma.u^2 / 2
+    else
+        mu.u <- 0
+    if (cov.structure == "none"){
+        cov <- matrix(0, nrow = K, ncol = K)
+    } 
+    else if (cov.structure == "independent"){    # rho = 0
+        cov <- diag(sigma.u^2, K, K)             
+    } 
+    else if (cov.structure == "exponential"){
+        cov <- sigma.u^2*exp(-trap.dists/rho)
+    } 
+    else if (cov.structure == "individual"){     # rho > infty
+        cov <- matrix(sigma.u^2, nrow = K, ncol = K)
+    } 
+    else if (cov.structure == "sq_exponential"){
+        cov <- sigma.u^2*exp(-(trap.dists^2)/(rho^2))
+    }
+    ## Simulate random field (individual x detector)
+    if (shared) {
+        u.row <- mvtnorm::rmvnorm(1, mean = rep(mu.u, K), sigma = cov) 
+        u.mat <- matrix(rep(u.row,N), byrow = TRUE, nrow = N)
+    }
+    else {    
+        u.mat <- mvtnorm::rmvnorm(N, mean = rep(mu.u, K), sigma = cov) 
+    }
+    full.er <- base.er * exp(u.mat) # encounter rates
+    if (noccasions>1) {
+        # replicate occasions
+        full.er <- aperm(apply(full.er,1:2,rep,noccasions), c(2,1,3))
+    }
+    if (detector(traps)[1] == 'proximity') {
+        ch <- rbinom(N*K*noccasions, 1, 1-exp(-full.er))
+    }
+    else if (detector(traps)[1] == 'count') {
+        ch <- rpois(N*K*noccasions, full.er)
+    }
+    else stop ("detector not proximity or count")
+    ch <- array(ch, dim=c(N,noccasions,K))
+    rownames(ch) <- 1:N
+    ch <- ch[apply(ch, 1, function(x) sum(x) > 0),,, drop = FALSE]
+    class(ch) <- 'capthist'
+    traps(ch) <- traps
+    attr(ch, 'u.mat') <- u.mat
+    ch
+}
+```
+
+```{r LDF oldtrps, eval = TRUE}
+# These are the detector sites used by Ben Stevenson (2021)
+trps <- make.grid(4,4,detector = 'count', spacing = 100)
+trps <- rbind(trps,trps)
+trps$x <- trps$x + rep(c(-10,10), c(16,16))
+msk    <- make.mask(trps, buffer = 500, type = 'trapbuffer')
+```
+
+```{r LDF old2, eval = TRUE}
+detarg <- expand.arg(sigma.u = seq(0,1.6,0.4), rho = c(50,150,450), 
+                        cov.structure = "sq_exponential", noccasions = 1)
+poparg <- list(buffer = 500)
+fitarg <- list(detectfn = 'HHN', mask = msk)
+scen   <- make.scenarios(D = 1, lambda0 = 0.5, sigma = 100,  detectfn = 'HHN', 
+                         detindex = 1:length(detarg))
+```
+
+```{r LDF old2 run, eval = FALSE}
+LDFsimsold2 <- run.scenarios(3, scen, trapset = trps, CH.function = "simLDF.capthist",
+              pop.args = poparg, det.args = detarg, fit = TRUE, fit.args = fitarg)
+saveRDS(LDFsimsold2, file = 'LDFsimsold2.RDS')
+```
+
+```{r LDF old2 shared, eval = TRUE}
+detarg <- expand.arg(sigma.u = seq(0,1.6,0.4), rho = c(50,150,450), 
+                cov.structure = "sq_exponential", shared = TRUE, noccasions = 1)
+poparg <- list(buffer = 500)
+fitarg <- list(detectfn = 'HHN', mask = msk)
+scen   <- make.scenarios(D = 1, lambda0 = 0.5, sigma = 100,  detectfn = 'HHN', 
+                         detindex = 1:length(detarg))
+```
+
+```{r LDF old2 shared run, eval = FALSE}
+LDFsimsold2shared <- run.scenarios(3, scen, trapset = trps, CH.function = "simLDF.capthist",
+              pop.args = poparg, det.args = detarg, fit = TRUE, fit.args = fitarg)
+saveRDS(LDFsimsold2shared, file = 'LDFsimsold2shared.RDS')
+```
+
+```{r LDF figures 2, fig.width = 8, fig.height = 6}
+LDFsimsold2 <- readRDS(file = 'LDFsimsold2.RDS')
+LDFsimsold2shared <- readRDS(file = 'LDFsimsold2shared.RDS')
+parm <- do.call(rbind, lapply(detarg, as.data.frame))   # now flat
+estD <- estimateSummary(LDFsimsold2, 'D', validrange = c(0,10))
+estL <- estimateSummary(LDFsimsold2, 'lambda0', validrange = c(0,5))
+estS <- estimateSummary(LDFsimsold2, 'sigma', validrange = c(0,1000))
+estDs <- estimateSummary(LDFsimsold2shared, 'D', validrange = c(0,10))
+estLs <- estimateSummary(LDFsimsold2shared, 'lambda0', validrange = c(0,5))
+estSs <- estimateSummary(LDFsimsold2shared, 'sigma', validrange = c(0,1000))
+leg <- c('D','lambda0','sigma')
+
+plotone <- function (estD,estL,estS, shared, rho) {
+    plot(0,0, type = 'n', xlim=c(0,1.6), xlab = 'sigma.u', ylab = 'RB', ylim=c(-0.8,0.8))
+    abline(h=0, lty=2)
+    rows <- parm$rho == rho
+    addRB(parm$sigma.u[rows], estL[rows,], pch=21, bg='white', star = 0.8, xoffset=0.015)
+    addRB(parm$sigma.u[rows], estS[rows,], pch=24, bg='white', star = 0.8, xoffset=0.03)
+    addRB(parm$sigma.u[rows], estD[rows,], pch=16)
+    mtext(side=3, paste0(shared, ' rho = ', rho), cex=0.8)
+    legend(0.05, -0.4, legend=leg, pch=c(16,21,24))
+}
+
+par(mfrow=c(2,3), mar=c(4,4,3,3))
+
+plotone(estD,estL,estS, shared = '', rho = 50)
+plotone(estD,estL,estS, shared = '', rho = 150)
+points(1.2, -0.18, pch=1, cex=2.5, lwd=2,col='red') # Ben's result
+plotone(estD,estL,estS, shared = '', rho = 450)
+
+plotone(estDs,estLs,estSs, shared = 'shared,', rho = 50)
+plotone(estDs,estLs,estSs, shared = 'shared,', rho = 150)
+plotone(estDs,estLs,estSs, shared = 'shared,', rho = 450)
+```
+
+## Interpretation
+
+## One-off
+
+# Hooten et al. 2024 GCR
+
+Hooten et al. (2024) simulated data for animals with multinuclear home ranges and applied a Gaussian latent detection field model to a single dataset. We generate similar data and apply the null SECR estimator.
+
+## Alternative capthist simulator
+
+`simGCR.capthist` uses the popn argument only to indicate the number of individuals and the buffered region. New random uniform centres are generated internally for each of the N individuals. The number of centres per individual is a truncated Poisson random variable, with rate parameter AClam. The probability an individual is detected in a particular detector is determined by the distance to its nearest activity centre (i.e. the maximum of the detection function over all activity centres).
+
+```{r GCR}
+simGCR.capthist <- function (traps, popn, detectfn, detectpar, noccasions, AClam = 0.5) {
+    oneanimal <- function (ACs) {
+        d <- edist(ACs, traps)
+        d <- apply(d,2,min)   # probability determined by closest AC to detector
+        lam0 <- exp(alpha + beta * d^2)
+        p <- 1 - exp (-lam0)
+        p <- matrix(rep(p, noccasions), nrow = noccasions, ncol = K, byrow = TRUE)
+        (runif(K*noccasions)<p) * 1.0
+    }
+    if (!(detectfn ==14 || detectfn == 'HHN')) 
+        stop ("simGCR.capthist assumes detectfn = 'HHN'")
+    
+    N <- nrow(popn)
+    K     <- nrow(traps)
+    buffer <-  min(traps$x) - min(attr(popn, 'boundingbox')$x)
+    alpha <- log(detectpar$lambda0)
+    beta  <- -1/2/detectpar$sigma^2   # -50 for sigma = 0.1
+  
+    # number of centres per animal
+    nAC <- secr:::rtpois(N,AClam)
+    
+    # randomly locate centres of each animal within buffered region
+    allACs <- lapply(nAC, function(nc) sim.popn(Nbuffer = nc, core = traps, 
+         buffer = buffer, Ndist = 'fixed'))
+    
+    # construct detection probabilities and sample
+    ch  <- lapply(allACs, oneanimal)
+    
+    # form capthist object, saving centres as an attribute
+    ch  <- array(do.call(c, ch), dim = c(N,noccasions,K))
+    rownames(ch) <- 1:N
+    detected <- apply(ch,1,sum)>0
+    ch <- ch[detected,,, drop = FALSE]
+    class(ch) <- 'capthist'
+    traps(ch) <- traps
+    attr(ch,'allACs') <- allACs
+    attr(ch, 'detected') <- detected
+    ch
+}
+```
+
+## Illustration
+
+Simulating (potentially) multiple centres per animal across the mask results in very wide 'movements'.
+```{r demo, warning = FALSE, fig.width=7, fig.height=7, fig.cap = "Figure: Simulated multinuclear data (centres joined by white line if more than one per animal). Detected animals: filled circles, undetected animals: white open circles. Detection data overlaid in colour."}
+grid64 <- make.grid(nx = 8, ny = 8, spacing = 1/7, detector = 'proximity')
+mask64 <- make.mask(grid64, buffer = 0.5)
+pop <- sim.popn(core = grid64, buffer = 0.5, Nbuffer = 29, Ndist = "fixed")
+plotone <- function(r, ...) {
+    plot(mask64, border=0.1, dots=F, col=grey(0.85))
+    plot(grid64, add = TRUE)
+    ch <- simGCR.capthist(...)
+    allACs <- attr(ch, 'allACs')
+    detACs <- allACs[attr(ch, 'detected')]
+    junk <- lapply(allACs, points, type='o', col='white', pch=1)
+    junk <- lapply(detACs, points, type='p', pch=16)
+    plot(ch, rad=0.02, border=0.5, tracks = TRUE, title='', add = TRUE)
+}
+par(mfrow=c(2,2), mar = c(1,1,3,1))
+junk <- sapply(1:4, plotone, traps = grid64, popn = pop, detectfn = 'HHN', noccasions = 5, 
+       detectpar = list(lambda0 = exp(-1), sigma = 0.1))
+```
+
+## Run simulations
+
+```{r GCR scenarios, eval = TRUE}
+source('../setup.R')
+poparg <- list(buffer = 0.5, Ndist = "fixed")
+detarg <- list(AClam = 0.5)
+fitarg <- list(detectfn = 'HHN', details = list(distribution = "binomial"))
+scen   <- make.scenarios(D = 29/maskarea(mask64), lambda0 = exp(-1), sigma = 0.1, 
+        detectfn = 'HHN', detindex = 1:length(detarg), noccasions = 5)
+```
+
+```{r GCR run, eval = FALSE}
+GCRsims <- run.scenarios(100, scen, trapset = grid64, maskset = mask64, 
+    CH.function = "simGCR.capthist", pop.args = poparg, det.args = detarg, 
+    fit = TRUE, fit.args = fitarg)
+saveRDS(GCRsims, file = 'GCRsims.RDS')
+```
+
+## Results
+
+```{r GCR summary}
+GCRsims <- readRDS(file = 'GCRsims.RDS')
+estD <- estimateSummary(GCRsims, 'D')
+estL <- estimateSummary(GCRsims, 'lambda0')
+estS <- estimateSummary(GCRsims, 'sigma')
+estlist <- list(estD,estL,estS)
+estlist <- lapply(estlist, function(x) {names(x)[2] <- 'true';x})
+tmp <- do.call(rbind, estlist)
+cbind(parameter = c('D','lambda0','sigma'), tmp[,-1])
+```
+
+Negligible bias in $\hat D$ but wild bias in $\hat \lambda_0$ and $\hat \sigma$.
+
+
+```{r GCR summary 2, echo = FALSE, eval = FALSE}
+# look at separate estimates
+lam0 <- sapply(GCRsims$output[[1]], '[', 'lambda0','estimate')
+sigma <- sapply(GCRsims$output[[1]], '[', 'sigma','estimate')
+hist(lam0*sigma^2)
+exp(-1) * 0.1^2
+```
+

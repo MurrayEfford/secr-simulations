@@ -1,0 +1,135 @@
+---
+title: "**secr** simulations DNC"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Dispersal and non-closure DNC
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+## Problem description
+
+Non-closure due to immigration and emigration (movement of AC) during the sampling period.
+
+## Settings
+
+Square grid of 64 binary proximity detectors at 3000-m spacing.  
+
+The same conditions used for simulation and fitting. 
+Weekly 'sessions' were joined in `run.scenarios` for the final single-session analysis.
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D        | 0.001 (0.1/km^2^) |
+| lambda0  | 0.02 per day |
+| sigma    | 2000 m |
+| lambda   | 1.0 (no trend in density) |
+| phi      | 1.0 |
+| noccasions | 100 |
+| buffer   | 10000 m |
+
+## Package version, date and platform
+
+**secr** 4.6.7 
+**secrdesign** 2.9.1
+
+Run on Matrix 2024-03-21:
+
+R version 4.3.0 (2023-04-21)  
+Platform: x86_64-pc-linux-gnu (64-bit)  
+
+## Simulation code
+
+```{r DNC initial, eval = TRUE, message = FALSE, results = "hide"}
+source('../setup.R')
+grid <- make.grid(nx = 8, ny = 8, spacing = 3000, detector = "proximity")
+moves <- c(0, 250, 500, 750, 1000)
+nmove <- length(moves)
+poparg <- expand.arg(
+    lambda    = 1, 
+    phi       = 1, 
+    move.a    = moves, 
+    movemodel = "normal", 
+    buffer    = 40000, 
+    D         = 0.001, 
+    nsessions = 100,
+    sublist = list(details = c('lambda','phi','move.a','movemodel')))
+
+detarg <- list(traps = grid, detectfn = 'HHN', detectpar = list(lambda0 = 0.02, sigma = 2000),
+               renumber = FALSE, noccasions = 1)
+fitarg <- list(mask = make.mask(grid, buffer = 10000, type = 'trapbuffer'), 
+               detectfn = 'HHN')
+scen <- make.scenarios(D = 0.001, noccasions = 1, detectfn = 'HHN', lambda0 = 0.02, 
+                        sigma = 2000, popindex=1:length(moves))
+```
+
+```{r DNC code1, eval = FALSE}
+DNCsims <- run.scenarios(nrepl = 500, scen, trapset = grid, pop.args = popargs, 
+                         det.args = detarg, joinsessions = TRUE, fit = TRUE, 
+                         fit.args = fitarg, seed = 12345)
+saveRDS(DNCsims, file = 'DNCsims.RDS')
+```
+
+## Results
+
+```{r DNC results1, echo = FALSE, results = "hold"} 
+DNCsims <- readRDS('DNCsims.RDS')
+# header(DNCsims)
+estD <- estimateSummary(DNCsims)
+estL <- estimateSummary(DNCsims, 'lambda0')
+estS <- estimateSummary(DNCsims, 'sigma')
+counts <- getcounts(DNCsims)
+cbind(move.a = moves, counts[,1:4])
+countlegend(-(5:6))
+```
+
+Runtime for `r DNCsims$nrepl` replicates using 24 cores was `r round(DNCsims$proctime/60)` minutes.
+
+```{r DNCfigure, echo = FALSE, fig.height = 5, fig.width=5, out.width="60%", fig.cap = "Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for density estimates from studies of varying random movement of AC. Annual survival 50% (open circles), 75% (filled circles) or 100% (triangles). Horizontal lines for reference only."}
+leg <- c('D','lambda0','sigma')
+par(mfrow = c(1,1), mar = c(5,4,2,2), mgp=c(2.4,0.7,0), pty = 's', xpd = FALSE)
+plot(0,0, type = 'n', ylim = c(-1, 1.2), xlim = c(0,1000), 
+     xlab = 'Daily HR shift sigma', ylab = 'RB')
+abline (h = 0, lty = 2)
+addRB(moves, estD, pch = 16, type = 'o')
+addRB(moves, estL, pch = 21, bg = 'white', type = 'o')
+addRB(moves, estS, pch = 24, bg = 'white', type = 'o')
+legend(0,-0.5,leg,pch=c(16,21,24), cex=0.85)
+```
+
+## Interpretation
+
+Results are specific to a population with no births or deaths.
+
+## One-off
+
+Run this code to obtain results for a single scenario. Requires secrdesign $\ge$ 2.9.0.
+```{r DNC oneoff, eval = FALSE, message = FALSE, warning = FALSE, results = "hide"}
+source('../setup.R')
+grid   <- make.grid(nx = 8, ny = 8, spacing = 3000, detector = "proximity")
+poparg <- list(core = grid, buffer = 40000, D = 0.001, nsessions = 100, 
+               details = list(lambda = 1, phi = 1, move.a = 500, movemodel = 'normal'))
+detarg <- list(traps = grid, detectfn = 'HHN', detectpar = list(lambda0 = 0.02, sigma = 2000),
+               renumber = FALSE, noccasions = 1)
+fitarg <- list(mask = make.mask(grid, buffer = 10000, type = 'trapbuffer'), 
+               detectfn = 'HHN')
+scen   <- make.scenarios( D = 0.001, noccasions = 1, detectfn = 'HHN', lambda0 = 0.02, sigma = 2000)
+oneoff <- run.scenarios(nrepl = 1, scen, trapset = grid, pop.args = poparg, det.args = detarg, 
+                        joinsessions = TRUE, fit = TRUE, fit.args = fitarg, seed = 12345,
+                        extractfn = 'identity')
+estimateSummary(oneoff)
+```
