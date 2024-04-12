@@ -31,7 +31,7 @@ Royle et al. 2013
 Stevenson et al. 2021  
 
 
-[CLO]: https://htmlpreview.github.io/?/CLO/secr-simulations-CLO.html
+[CLO]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/CLO/secr-simulations-CLO.html
 [DNC]: DNC/secr-simulations-DNC.html
 [MID]: MID/secr-simulations-MID.html
 [LDF]: LDF/secr-simulations-LDF.html
