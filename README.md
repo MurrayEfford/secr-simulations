@@ -32,14 +32,14 @@ Stevenson et al. 2021
 
 
 [CLO]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/CLO/secr-simulations-CLO.html
-[DNC]: DNC/secr-simulations-DNC.html
-[MID]: MID/secr-simulations-MID.html
-[LDF]: LDF/secr-simulations-LDF.html
-[Mb]: Mb/secr-simulations-Mb.html
-[Mt]: Mt/secr-simulations-Mt.html
-[Mh]: Mh/secr-simulations-Mh.html
-[OU]: OU/secr-simulations-OU.html
-[SARE]: SARE/secr-simulations-SARE.html
+[DNC]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/DNC/secr-simulations-DNC.html
+[MID]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/MID/secr-simulations-MID.html
+[LDF]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/LDF/secr-simulations-LDF.html
+[Mb]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mb/secr-simulations-Mb.html
+[Mt]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mt/secr-simulations-Mt.html
+[Mh]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mh/secr-simulations-Mh.html
+[OU]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/OU/secr-simulations-OU.html
+[SARE]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/SARE/secr-simulations-SARE.html
 
 [CLO rmd]: CLO/secr-simulations-CLO.rmd
 [DNC rmd]: DNC/secr-simulations-DNC.rmd
