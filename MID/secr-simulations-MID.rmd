@@ -15,7 +15,7 @@ output:
   word_document: default
 ---
 
-# Misidentification as source of bias in SECR
+# Mis-identification as source of bias in SECR
 
 The simulations described here are part of a series documenting the effect of 
 breaching assumptions of spatially explicit capture--recapture models.
@@ -24,7 +24,7 @@ breaching assumptions of spatially explicit capture--recapture models.
 
 Detected animals may be 
 
-1. misidentified as an existing marked (known) individual, or 
+1. mis-identified as an existing marked (known) individual, or 
 2. mistakenly identified as a new 'ghost' individual, or
 3. indistinguishable from another with the same genotype at the loci sampled.
 
@@ -108,8 +108,6 @@ simMID.capthist <- function(traps, popn, detectfn, detectpar = list(),
 
 ```{r common settings, eval = TRUE, message = FALSE, results = "hide"}
 source('../setup.R')
-cols <- RColorBrewer::brewer.pal(n = 5, name = "YlOrBr")
-cols2 <- RColorBrewer::brewer.pal(n = 5, name = "Blues")
 grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
 fitarg <- list(detectfn = 'HHN', model = lambda0 ~ 1, start = NULL)
 nrepl <- 200
@@ -216,8 +214,8 @@ shade(0.1)
 abline(h=0, lty=2)
 addRB(x, estL, type='o', pch=21, bg = 'white')
 addRB(x, estS, type='o', pch=24, bg = 'white', star = 1.0)
-addRB(x, estD, type='o', pch=21, bg = cols[3], cex = 1.3)
-legend(0.15, 0.6, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(cols[3],'white','white'))
+addRB(x, estD, type='o', pch=21, bg = yob5[3], cex = 1.3)
+legend(0.15, 0.6, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(yob5[3],'white','white'))
 ```
 
 ### MID2 Ghost individuals
@@ -246,8 +244,8 @@ shade(0.1)
 abline(h=0, lty=2)
 addRB(x, estL, type='o', pch=21, bg = 'white')
 addRB(x, estS, type='o', pch=24, bg = 'white', star = 1.0)
-addRB(x, estD, type='o', pch=21, bg = cols[3],cex = 1.3)
-legend(0, 0.-0.5, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(cols[3],'white','white'))
+addRB(x, estD, type='o', pch=21, bg = yob5[3],cex = 1.3)
+legend(0, 0.-0.5, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(yob5[3],'white','white'))
 ```
 
 ### MID3 Identical genotypes
@@ -285,8 +283,8 @@ shade(0.1)
 abline(h=0, lty=2)
 addRB(x, estL, type='o', pch=21, bg = 'white')
 addRB(x, estS, type='o', pch=24, bg = 'white', star = 1.0)
-addRB(x, estD, type='o', pch=21, bg = cols[3],cex = 1.3)
-legend(0.000015, -0.6, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(cols[3],'white','white'))
+addRB(x, estD, type='o', pch=21, bg = yob5[3],cex = 1.3)
+legend(0.000015, -0.6, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(yob5[3],'white','white'))
 
 par(fig = c(0.09,0.4, 0.6, 0.98), mgp=c(0.5,0.5,0), new = T)  
 plot(1,1,type='n', xlim=c(0, 1e-2),  ylim=c(-1,1), xlab = 'PI', ylab='RB', axes = F)
@@ -329,11 +327,11 @@ axis(2)
 shade(0.1)
 abline(h = 0, lty = 2)
 for (d in 1:5) {
-    addRB(x, estD[(d-1)*8 + 1:8,], type = 'o', pch = 21, cex = 1.4, bg = cols[d])
+    addRB(x, estD[(d-1)*8 + 1:8,], type = 'o', pch = 21, cex = 1.4, bg = yob5[d])
 }
 legend(0.000015, -0.55, legend = as.character(12.5 * c(0.25,0.5,1,2,4)),
        text.width = 0.38, title = expression(paste('Density ', sigma^{-2})), 
-       pch = 21, pt.bg = cols, cex=0.85, pt.cex = 1.4)
+       pch = 21, pt.bg = yob5, cex=0.85, pt.cex = 1.4)
 ```
 
 From the curves in the previous figure we can interpolate the threshold PI at which relative bias of the density estimate from a null model exceeds a given threshold e.g. 5\%. We plot this as a function of the expected number of individuals detected.
@@ -349,8 +347,8 @@ axis(2, at = 10^seq(-5,-2,0.5), label = c('0.00001','','0.0001','','0.001','','0
 axis(1)
 mtext(side=2, line = 4, 'PI threshold')
 box()
-points(n, threshold05, pch=21, type = 'o', bg = cols, cex = 1.5)
-points(n, threshold10, pch=21, type = 'o', bg = cols, cex = 1.5)
+points(n, threshold05, pch=21, type = 'o', bg = yob5, cex = 1.5)
+points(n, threshold10, pch=21, type = 'o', bg = yob5, cex = 1.5)
 text(380, 2.2e-4, 'RB -10%')
 text(380, 3e-5, 'RB -5%')
 ```
@@ -380,11 +378,11 @@ axis(2)
 shade(0.1)
 abline(h = 0, lty = 2)
 for (l in 1:3) {
-    addRB(x, estD[(l-1)*8 + 1:8,], type = 'o', pch = 21, cex = 1.4, bg = cols2[l+1])
+    addRB(x, estD[(l-1)*8 + 1:8,], type = 'o', pch = 21, cex = 1.4, bg = blu5[l+1])
 }
 legend(0.000015, -0.55, legend = as.character(c(0.05,0.1,0.2)),
        text.width = 0.38, title = 'lambda0', 
-       pch = 21, pt.bg = cols2[2:4], cex=0.85, pt.cex = 1.4)
+       pch = 21, pt.bg = blu5[2:4], cex=0.85, pt.cex = 1.4)
 ```
 
 ## Interpretation

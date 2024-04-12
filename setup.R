@@ -1,14 +1,19 @@
 ## Setup code for all secr-simulations
-## 2024-03-29
+## 2024-03-29, 2024-04-13
 
 ## To use
-## -- install package secrdesign from CRAN
+## -- install packages secrdesign and RColorBrewer from CRAN
 ## -- edit the call to setNumThreads as required
+## -- knit rmarkdown file including source('setup.R') and simulation code
 
 library(secrdesign)
 nc <- setNumThreads(18)
 options(digits = 5)      # for more readable output
 options(width=100)
+
+# predefine some colours
+yob5 <- RColorBrewer::brewer.pal(n = 5, name = "YlOrBr")
+blu5 <- RColorBrewer::brewer.pal(n = 5, name = "Blues")
 
 # add points to plot
 addRB <- function (x, est, mean = 'RB', se = 'seRB', xoffset = 0, star = 100, ...) {
