@@ -29,7 +29,7 @@ The SECR null model assumes $\lambda_0$ and $\sigma$ are not affected by whether
 
 ## Settings
 
-Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.  
+Square grid of 64 binary multi-catch traps at spacing $c = 2\sigma$.  
 
 The same conditions used for simulation and fitting.
 
@@ -65,6 +65,10 @@ detarg <- expand.arg(
 fitarg <- list(detectfn = 'HHN', model = lambda0 ~ 1)
 scen <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg), fitindex = 1)
+```
+
+```{r Mb scenario summary, cache = TRUE}
+scenarioSummary(scen, grid)
 ```
 
 ### Check counts

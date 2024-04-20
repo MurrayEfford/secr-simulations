@@ -126,48 +126,83 @@ ch <- simMID.capthist (grid, popn = pop, detectfn=14, detectpar = list(lambda0=0
 summary(ch)
 ```
 
-```{r MID-run1, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID1-scen, eval = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 detarg1 <- expand.arg(pMID = c(0.00, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2))
 scen1 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg1), fitindex = 1)
+```
+
+```{r MID1 scenario summary, cache = TRUE}
+scenarioSummary(scen1, grid)
+```
+
+```{r MID1-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims1 <- run.scenarios(nrepl = nrepl, scen1, trapset = grid, det.args = detarg1, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims1, file = 'MIDsims1.RDS')
 ```
 
-```{r MID-run2, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID2-scen, eval = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 detarg2 <- expand.arg(pGhost = c(0.00, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2))
 scen2 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg2), fitindex = 1)
+```
+
+```{r MID2 scenario summary, cache = TRUE}
+scenarioSummary(scen2, grid)
+```
+
+```{r MID2-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims2 <- run.scenarios(nrepl = nrepl, scen2, trapset = grid, det.args = detarg2, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims2, file = 'MIDsims2.RDS')
 ```
 
-```{r MID-run3, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID3-scen, eval = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 detarg3 <- expand.arg(PI = c(0.00, 10^(seq(-5,-2,0.5))))
 scen3 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg3))
+```
+
+```{r MID3 scenario summary, cache = TRUE}
+scenarioSummary(scen3, grid)
+```
+
+```{r MID3-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims3 <- run.scenarios(nrepl = nrepl, scen3, trapset = grid, det.args = detarg3, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims3, file = 'MIDsims3.RDS')
 ```
 
-```{r MID-run4, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID4-scen, eval = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 scen4 <- make.scenarios(D = 12.5 * c(0.25,0.5,1,2,4), noccasions = 10, detectfn = 14, 
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg3))
 scen4 <- scen4[order(scen4$D, scen4$detindex),]
 scen4$scenario <- 1:nrow(scen4)
+```
+
+```{r MID4 scenario summary, cache = TRUE}
+scenarioSummary(scen4, grid)
+```
+
+```{r MID4-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims4 <- run.scenarios(nrepl = nrepl, scen4, trapset = grid, det.args = detarg3, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims4, file = 'MIDsims4.RDS')
 ```
 
-```{r MID-run5, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID5-scen, eval = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 scen5 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
     lambda0 = c(0.05,0.1,0.2), sigma = 20, detindex = 1:length(detarg3))
 scen5 <- scen5[order(scen5$lambda0, scen5$detindex),]
 scen5$scenario <- 1:nrow(scen5)
+```
+
+```{r MID5 scenario summary, cache = TRUE}
+scenarioSummary(scen5, grid)
+```
+
+```{r MID5-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims5 <- run.scenarios(nrepl = nrepl, scen5, trapset = grid, det.args = detarg3, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims5, file = 'MIDsims5.RDS')

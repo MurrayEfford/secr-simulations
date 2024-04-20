@@ -105,6 +105,10 @@ scen <- make.scenarios(
     fitindex   = 1)
 ```
 
+```{r Mh scenario summary, cache = TRUE}
+scenarioSummary(scen, grid)
+```
+
 ### Run Mh simulations
 
 ```{r Mh-run, eval = FALSE}

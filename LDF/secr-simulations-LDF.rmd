@@ -165,6 +165,10 @@ scen   <- make.scenarios(D = 1, lambda0 = 0.5, sigma = 100,  detectfn = 'HHN',
                          detindex = 1:length(detarg))
 ```
 
+```{r LDF scenario summary, cache = TRUE, warning = FALSE}
+scenarioSummary(scen, trapset = trps)
+```
+
 ```{r LDF old2 shared run, eval = FALSE}
 LDFsimsold2shared <- run.scenarios(3, scen, trapset = trps, CH.function = "simLDF.capthist",
               pop.args = poparg, det.args = detarg, fit = TRUE, fit.args = fitarg)

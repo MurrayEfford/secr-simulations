@@ -11,7 +11,7 @@
 
 <meta name="author" content="Murray Efford" />
 
-<meta name="date" content="2024-03-29" />
+<meta name="date" content="2024-04-20" />
 
 <title>secr simulations</title>
 
@@ -358,7 +358,7 @@ display: none;
 
 <h1 class="title toc-ignore"><strong>secr</strong> simulations</h1>
 <h4 class="author">Murray Efford</h4>
-<h4 class="date">2024-03-29</h4>
+<h4 class="date">2024-04-20</h4>
 
 </div>
 
@@ -394,7 +394,6 @@ effect of breaching assumptions of spatially explicit capture–recapture
 models.</p>
 <p>Variation among individuals in the probability of detection is a
 known cause of bias in many domains of capture–recapture.</p>
-<pre class="r"><code>source(&#39;../setup.R&#39;)</code></pre>
 <div id="problem-description" class="section level2">
 <h2>Problem description</h2>
 <p>The SECR null model assumes <span class="math inline">\(\lambda_0\)</span> and <span class="math inline">\(\sigma\)</span> are the same across individuals.
@@ -505,6 +504,27 @@ scen &lt;- make.scenarios(
     sigma      = 20, 
     popindex   = 1:length(poparg), 
     fitindex   = 1)</code></pre>
+<pre class="r"><code>scenarioSummary(scen, grid)</code></pre>
+<pre><code>##   scenario trapsindex noccasions nrepeats    D lambda0 sigma detectfn     En     Er     Em    En2
+## 1        1          1         10        1 12.5     0.1    20       14 110.03 86.116 55.021 40.795
+## 2        2          1         10        1 12.5     0.1    20       14 110.03 86.116 55.021 40.795
+## 3        3          1         10        1 12.5     0.1    20       14 110.03 86.116 55.021 40.795
+## 4        4          1         10        1 12.5     0.1    20       14 110.03 86.116 55.021 40.795
+## 5        5          1         10        1 12.5     0.1    20       14 110.03 86.116 55.021 40.795
+## 6        6          1         10        1 12.5     0.1    20       14 110.03 86.116 55.021 40.795
+## 7        7          1         10        1 12.5     0.1    20       14 110.03 86.116 55.021 40.795
+## 8        8          1         10        1 12.5     0.1    20       14 110.03 86.116 55.021 40.795
+## 9        9          1         10        1 12.5     0.1    20       14 110.03 86.116 55.021 40.795
+##      esa CF rotRSE rotRSEB arrayN arrayspace arrayspan saturation detperHR.median       k
+## 1 8.8021  1 0.1078  0.0858     64          2    19.799    0.26959               4 0.70711
+## 2 8.8021  1 0.1078  0.0858     64          2    19.799    0.26959               4 0.70711
+## 3 8.8021  1 0.1078  0.0858     64          2    19.799    0.26959               4 0.70711
+## 4 8.8021  1 0.1078  0.0858     64          2    19.799    0.26959               4 0.70711
+## 5 8.8021  1 0.1078  0.0858     64          2    19.799    0.26959               4 0.70711
+## 6 8.8021  1 0.1078  0.0858     64          2    19.799    0.26959               4 0.70711
+## 7 8.8021  1 0.1078  0.0858     64          2    19.799    0.26959               4 0.70711
+## 8 8.8021  1 0.1078  0.0858     64          2    19.799    0.26959               4 0.70711
+## 9 8.8021  1 0.1078  0.0858     64          2    19.799    0.26959               4 0.70711</code></pre>
 </div>
 <div id="run-mh-simulations" class="section level3">
 <h3>Run Mh simulations</h3>
@@ -594,8 +614,7 @@ well in terms of bias (-0.4%) and confidence interval coverage (93%),
 with two caveats: not all datasets yielded estimates, and the precision
 of the estimates was greatly reduced (relative standard error increased
 from 0.11 to 0.30).</p>
-<pre class="r"><code>library(secrdesign)
-nc &lt;- setNumThreads(18)
+<pre class="r"><code>source(&#39;../setup.R&#39;)
 grid &lt;- make.grid(nx = 8, ny = 8, spacing = 40, detector = &quot;proximity&quot;)
 poparg &lt;- list(covariates = popn.covariates, lambda0 = 0.1, sigma = 20, CVlambda0 = 0.6, CVsigma2 = 0)
 detarg &lt;- list(detectpar = list(individual = TRUE))
@@ -612,12 +631,12 @@ Dstats &lt;- select.stats(oneoff, &#39;D&#39;, c(&#39;estimate&#39;,&#39;SE.esti
 # reject estimates with extreme SE.estimate, and summarise
 summary(validate(Dstats, &#39;SE.estimate&#39;, c(0.001,100), &#39;all&#39;))$OUTPUT</code></pre>
 <pre><code>## $`1`
-##               n    mean      se
-## estimate    100 10.4601 0.11718
-## SE.estimate 100  1.1570 0.01066
-## RB          100 -0.1632 0.00937
-## RSE         100  0.1110 0.00064
-## COV         100  0.6200 0.04878
+##               n     mean      se
+## estimate    100 10.46014 0.11718
+## SE.estimate 100  1.15697 0.01066
+## RB          100 -0.16319 0.00937
+## RSE         100  0.11103 0.00064
+## COV         100  0.62000 0.04878
 ## 
 ## $`2`
 ##              n     mean      se

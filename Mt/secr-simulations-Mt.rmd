@@ -96,6 +96,10 @@ scen <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14,
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg), fitindex = 1)
 ```
 
+```{r Mt scenario summary, cache = TRUE}
+scenarioSummary(scen, grid)
+```
+
 ### Check empirical CV of counts per occasion
 
 ```{r Mt counts, echo = TRUE, eval = TRUE, cache = TRUE, message = FALSE}

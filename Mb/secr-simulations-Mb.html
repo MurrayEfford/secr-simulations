@@ -11,7 +11,7 @@
 
 <meta name="author" content="Murray Efford" />
 
-<meta name="date" content="2024-03-29" />
+<meta name="date" content="2024-04-20" />
 
 <title>secr simulations Mb</title>
 
@@ -358,7 +358,7 @@ display: none;
 
 <h1 class="title toc-ignore"><strong>secr</strong> simulations Mb</h1>
 <h4 class="author">Murray Efford</h4>
-<h4 class="date">2024-03-29</h4>
+<h4 class="date">2024-04-20</h4>
 
 </div>
 
@@ -405,7 +405,7 @@ model.</p>
 </div>
 <div id="settings" class="section level2">
 <h2>Settings</h2>
-<p>Square grid of 64 binary proximity detectors at spacing <span class="math inline">\(c = 2\sigma\)</span>.</p>
+<p>Square grid of 64 binary multi-catch traps at spacing <span class="math inline">\(c = 2\sigma\)</span>.</p>
 <p>The same conditions used for simulation and fitting.</p>
 <table>
 <thead>
@@ -468,6 +468,29 @@ detarg &lt;- expand.arg(
 fitarg &lt;- list(detectfn = &#39;HHN&#39;, model = lambda0 ~ 1)
 scen &lt;- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg), fitindex = 1)</code></pre>
+<pre class="r"><code>scenarioSummary(scen, grid)</code></pre>
+<pre><code>##    scenario trapsindex noccasions nrepeats    D lambda0 sigma detectfn     En     Er     Em   En2
+## 1         1          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+## 2         2          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+## 3         3          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+## 4         4          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+## 5         5          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+## 6         6          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+## 7         7          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+## 8         8          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+## 9         9          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+## 10       10          1         10        1 12.5     0.1    20       14 110.03 77.657 49.475 36.42
+##       esa CF rotRSE rotRSEB arrayN arrayspace arrayspan saturation detperHR.median       k
+## 1  8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711
+## 2  8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711
+## 3  8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711
+## 4  8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711
+## 5  8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711
+## 6  8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711
+## 7  8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711
+## 8  8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711
+## 9  8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711
+## 10 8.8021  1 0.1135  0.0929     64          2    19.799    0.25945               4 0.70711</code></pre>
 </div>
 <div id="check-counts" class="section level3">
 <h3>Check counts</h3>

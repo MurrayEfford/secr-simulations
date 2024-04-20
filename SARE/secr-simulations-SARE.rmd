@@ -135,6 +135,10 @@ scen <- make.scenarios(noccasions = 10,
                        fitindex   = 1:2)
 ```
 
+```{r RSF scenario summary, cache = TRUE, warning = FALSE}
+scenarioSummary(scen, trapset = grid49)
+```
+
 ```{r RSF run, eval = FALSE}
 RSFsims <- run.scenarios(
     nrepl       = 100, 
@@ -551,6 +555,11 @@ scen <- make.scenarios(noccasions = 1,
                        detindex   = 1:length(detarg))
 ```
 
+```{r MOQ scenario summary, cache = TRUE, warning = FALSE}
+scenarioSummary(scen, trapset = grid400)
+```
+
+
 Simulate some data without fitting. Following Moqanaki et al. we use Moran's I to measure autocorrelation; the neighbour window includes adjacent detectors.
 ```{r MOQ summary, cache = TRUE, message = FALSE}
 MOQtest <- run.scenarios(100, scen, grid400,CH.function = "simMOQDEY.capthist", 
@@ -637,7 +646,7 @@ The same conditions used for simulation and fitting.
 | base g0  | 0.1, 0.3, 0.6 |
 | sigma    | $1.5c$ |
 | noccasions | 1 |
-| buffer   | $3\sigma$ |
+| buffer   | $3.3\sigma$ |
 | nx       | 64 |
 
 ## Package version, date and platform
@@ -668,6 +677,10 @@ scen <- make.scenarios(noccasions = 1,
                        detindex   = 1:length(detarg))
 scen <- scen[order(scen$g0, scen$detindex),]
 scen$scenario <- 1:6
+```
+
+```{r DEY scenario summary, cache = TRUE, warning = FALSE}
+scenarioSummary(scen, trapset = grid1024)
 ```
 
 Simulate some data without fitting to check Moran's I.
