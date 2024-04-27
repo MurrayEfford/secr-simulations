@@ -43,13 +43,12 @@ The same conditions were used for simulation and fitting.
 
 ## Package version, date and platform
 
-**secr** 4.6.7
+R version 4.3.0 (2023-04-21)  
+Platform: x86_64-pc-linux-gnu (64-bit)  
+Running under: Red Hat Enterprise Linux 8.6 (Ootpa)  
 
-**secrdesign** 2.9.0
-
-R version 4.3.2 (2023-10-31 ucrt)
-Platform: x86_64-w64-mingw32/x64 (64-bit)
-Running under: Windows 11 x64 (build 22631)
+secrdesign_2.9.1  
+secr_4.6.7  
 
 ## Simulation code
 
@@ -117,5 +116,27 @@ plot(0,0,type='n', xlim=c(0,2.8), ylim=c(0, 0.5),
 points(x, estD[1:9,'rRMSE'], type='o', pch=16, cex = 1.2)
 points(x+0.02, estD[10:18,'rRMSE'], type='o', pch=24, bg='white', cex=1.1)
 legend(2, 0.5, legend=c('HHN','HEX'), pch=c(16,24), pt.bg = 'white', cex = 1)
+```
+
+## Compare Efford 2011 Table 3
+
+Efford (2011 Ecology 92: 2202--2207) simulated area-search data with a half-normal detection function. The searched area varied from $1 \sigma^2$ to $64 \sigma^2$. We plot the results as a function of area-diameter divided by 95\% BVN home range as with the preceding simulations. Bias results when the linear diagonal of the searched area is less than about 75\% of the 95\% home-range diameter. Given the arbitrariness of both measures (area dimension, home range size) we suggest the simple rule: the grid or searched area should be at least the size of the home range.
+
+```{r plotefford2011}
+searcharea <- c(1,2,4,8,16,32,64)
+diag <- sqrt(2) * sqrt(searcharea)
+HR95 <- 2 * 2.45 * 1
+diag/HR95
+RB <- c(0.47,0.20,0.12,0.02, 0.02, 0.02,-0.01)
+
+par(mfrow=c(1,1), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', cex = 1.2, pty='s')
+
+plot(0,0,type='n', xlim=c(0,2.8), ylim=c(-0.2, 0.5), 
+     xlab = 'Array diameter / HR diameter', 
+     ylab = expression(paste('RB (', hat(italic(D)), ')') ) )
+shade(0.05)
+abline(h=0, lty=2)
+addRB(x, estD[1:9,], type='o', pch=16, cex=1)
+points(diag/HR95, RB, pch=21, bg='yellow')
 ```
 
