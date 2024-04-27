@@ -1,0 +1,121 @@
+---
+title: "**secr** simulations ARR"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Array dimensions ARR
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+A detector array that is too small will likely result in biased estimates. Simulations were provided for searched areas by Efford (2011 Table 3).
+
+These simulations extend the empirical basis for the conclusion.
+
+
+## Settings
+
+Square grid of 64 binary proximity detectors at spacing $c = 2$.  
+
+The same conditions were used for simulation and fitting. 
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D | $12.5 (c/2)^{-2}$ |
+| lambda0  | 0.1 |
+| sigma    | variable |
+| noccasions | 10 |
+| buffer   | $4\sigma$ |
+| nx       | 64 |
+
+## Package version, date and platform
+
+**secr** 4.6.7
+
+**secrdesign** 2.9.0
+
+R version 4.3.2 (2023-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 11 x64 (build 22631)
+
+## Simulation code
+
+### Define ARR scenarios
+
+```{r ARR scenarios, eval = TRUE, message = FALSE, results = "hide"}
+source('../setup.R')
+grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
+fitarg <- expand.arg(detectfn = c(14,16))
+ratio <- seq(0.5,2.5,0.25)
+R95 <- max(dist(grid)) / ratio
+scen <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
+    lambda0 = 0.1, sigma = R95/2/2.45, fitindex = 1:2)
+# scale density to avoid variation in # detections due to sigma
+# result corresponds to D = 12.5 when sigma = 20 (outside simulated range)
+scen$D <- scen$D / (scen$sigma / 20)^2
+```
+
+```{r ARR scenario summary, cache = TRUE}
+scenarioSummary(scen, grid)
+```
+
+### Run ARR simulations
+
+```{r ARR run, eval = FALSE, cache = TRUE}
+ARRsims <- run.scenarios(nrepl = 500, scen, trapset = grid, nx = 64,
+    fit = TRUE, fit.args = fitarg, seed = 12345)
+saveRDS(ARRsims, file = 'ARRsims.RDS')
+```
+
+## Results
+
+```{r ARR results, eval = TRUE, echo = TRUE}
+ARRsims <- readRDS(file = 'ARRsims.RDS')
+estD <- estimateSummary(ARRsims)
+estD
+```
+
+Note: rRMSE is the root-mean-square error divided by the true density.
+
+$\mbox{rRMSE}(\hat D) = \frac{1}{D} \sqrt {\frac{1}{N} \sum_{i=1}^N {(D - \hat D_i)^2}}$ 
+
+$\mbox{RB}(\hat D) = \frac{1}{N} \sum_{i=1}^N {(D - \hat D_i)}/D$ 
+
+
+```{r ARR figure, eval = TRUE, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Effect of array size on relative bias (RB) and relative root-mean-square error (rRMSE) of density estimates"}
+
+par(mfrow=c(1,2), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', cex = 1, pty='s')
+
+x <- max(dist(grid)) / (2.45 * scen$sigma[1:9] *2)
+
+plot(0,0,type='n', xlim=c(0,2.8), ylim=c(-0.2, 0.2), 
+     xlab = 'Array diameter / HR diameter', 
+     ylab = expression(paste('RB (', hat(italic(D)), ')') ) )
+shade(0.05)
+abline(h=0, lty=2)
+abline(v=0, col='grey')
+addRB(x, estD[1:9,], type='o', pch=16, cex=1.2)
+addRB(x, estD[10:18,], type='o', pch=24, bg = 'white', xoffset = 0.02)
+legend(2, 0.2, legend=c('HHN','HEX'), pch=c(16,24), pt.bg = 'white', cex = 1)
+
+plot(0,0,type='n', xlim=c(0,2.8), ylim=c(0, 0.5), 
+     xlab = 'Array diameter / HR diameter',
+     ylab = expression(paste('rRMSE (', hat(italic(D)), ')') ) )
+points(x, estD[1:9,'rRMSE'], type='o', pch=16, cex = 1.2)
+points(x+0.02, estD[10:18,'rRMSE'], type='o', pch=24, bg='white', cex=1.1)
+legend(2, 0.5, legend=c('HHN','HEX'), pch=c(16,24), pt.bg = 'white', cex = 1)
+```
+
