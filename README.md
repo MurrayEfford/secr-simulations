@@ -19,6 +19,7 @@ Follow the HTML link for results and the RMD link for R code.
 | [OU]   | [OU rmd]   | Serial correlation of location within home range |
 | [SARE] | [SARE rmd] | Spatially autocorrelated random effects<sup>1</sup> |
 | [LDF]  | [LDF rmd]  | Latent detection field (Stevenson et al. 2021) |
+| [ARR]  | [ARR rmd]  | Size of array |
 
 1. SARE includes the scenarios considered by Royle et al. (2013), Efford (2014), Moqanaki et al. (2021), and Dey et al. (2023)
 
@@ -45,6 +46,7 @@ Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structu
 [Mh]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mh/secr-simulations-Mh.html
 [OU]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/OU/secr-simulations-OU.html
 [SARE]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/SARE/secr-simulations-SARE.html
+[ARR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/ARR/secr-simulations-ARR.html
 
 [CLO rmd]: CLO/secr-simulations-CLO.rmd
 [DNC rmd]: DNC/secr-simulations-DNC.rmd
@@ -55,3 +57,4 @@ Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structu
 [Mh rmd]: Mh/secr-simulations-Mh.rmd
 [OU rmd]: OU/secr-simulations-OU.rmd
 [SARE rmd]: SARE/secr-simulations-SARE.rmd
+[ARR rmd]: SARE/secr-simulations-ARR.rmd
