@@ -130,9 +130,11 @@ mtext (side=3, adj=0, expression(paste('f. Detection correlated, ', hat(italic(D
 
 ### Define STR scenarios
 
-```{r STR scenarios, eval = TRUE, message = FALSE, results = "hide"}
+#### Varying effort
+
+```{r STR scenarios 1, eval = TRUE, message = FALSE, results = "hide"}
 # a. equal effort (2 64-detector grids)
-# b. uncorrelated: patchy detection unrelated to density  (36-detector, 64-detector grids)
+# b. effort uncorrelated: patchy effort unrelated to density  (36-detector, 64-detector grids)
 # c. naive: more effort where greater density  (36-detector, 64-detector grids)
 # c1. modelling D  (36-detector, 64-detector grids)
 # c2. independent estimates  (36-detector, 64-detector grids)
@@ -148,14 +150,33 @@ fitarg1 <- list(list(detectfn = 'HHN', start = list(D = 12.5)),
                list(detectfn = 'HHN', start = list(D = 12.5),
                     model = list(D~grid, lambda0~grid, sigma~grid)))
 scen1
+```
 
-scen2 <- make.scenarios(fitindex=1:2, D = 12.5, groups = 1:2, detectfn='HHN', lambda0 = 0.1, 
-                        sigma = 20, noccasions = 10)
-scen2$lambda0 <- c(0.05, 0.15, 0.05, 0.15)
+#### Varying detection
+
+Use 'groups' to define sub-scenarios with differing detection on different subgrids.
+
+```{r STR scenarios 2, eval = TRUE, message = FALSE, results = "hide"}
+# d. equal detection (repeats a. so not simulated)
+# e. detection uncorrelated: patchy detection unrelated to density
+# f. detection correlated
+# f1. detection correlated and modelled
+# f2. detection correlated, D modelled
+# f3. detection correlated and modelled with D
+
+scen2 <- make.scenarios(fitindex=c(1,1,1,2,3,4), D = 12.5, groups = 1:2, detectfn='HHN', 
+                        lambda0 = 0.1, sigma = 20, noccasions = 10)
+scen2$lambda0[3:12] <- rep(c(0.15, 0.05),5)
 scen2$trapsindex <- scen2$group
+scen2
+popnset <- list(popargs, popargsy)
+scen2$popindex <- rep(c(1,2,1,1,1,1), each = 2)
+scen2$fitindex <- rep(c(1,1,1,2,3,4), each = 2)
 trapset2 <- list(grid1, grid2)
 fitarg2 <- list(list(detectfn = 'HHN', start = list(D = 12.5)),
-                list(detectfn = 'HHN', start = list(D = 12.5), model = lambda0~sub))
+                list(detectfn = 'HHN', start = list(D = 12.5), model = lambda0~grid),
+                list(detectfn = 'HHN', start = list(D = 12.5), model = D~grid),
+                list(detectfn = 'HHN', start = list(D = 12.5), model = list(D~grid, lambda0~grid))                )
 scen2
 ```
 
@@ -165,32 +186,53 @@ scenarioSummary(scen1, trapset1)
 
 ### Run STR simulations
 
-```{r STR run1abc, eval = runsim, cache = TRUE}
+```{r STR run1abc, eval = runsim, cache = TRUE, message = FALSE}
 nrepl <- 100
 sims1abc <- run.scenarios(nrepl, scen1[1:3,], trapset = trapset1, maskset = mask, 
                       pop.args = popnset, fit = TRUE, fit.args = fitarg1)
 saveRDS(sims1abc, file = 'STRsims1abc.RDS')
 ```
 
-```{r STR run1c1c2, eval = runsim, cache = TRUE, warning = FALSE}
+```{r STR run1c1c2, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
 sims1c1c2 <- run.scenarios(nrepl, scen1[4:5,], trapset = trapset1, maskset = mask, 
                       pop.args = popnset, fit = TRUE, fit.args = fitarg1,
                       extractfn = stratumTable, cov = 'grid')
 saveRDS(sims1c1c2, file = 'STRsims1c1c2.RDS')
 ```
 
-```{r STR run2e, eval = runsim, cache = TRUE}
-sims2e <- run.scenarios(nrepl, scen2[1:2,], trapset = list(grid1,grid2), maskset = mask, 
-                       pop.args = popargs, multisession = append.capthist,
+```{r STR run2e, eval = runsim, cache = TRUE, message = FALSE}
+sims2e <- run.scenarios(nrepl, scen2[3:4,], trapset = list(grid1,grid2), maskset = mask, 
+                       pop.args = popnset, multisession = append.capthist,
                        fit.args = fitarg2, fit = TRUE)
 saveRDS(sims2e, file = 'STRsims2e.RDS')
 ```
 
-```{r STR run2f, eval = runsim, cache = TRUE}
-sims2f <- run.scenarios(nrepl, scen2[3:4,], trapset = list(grid1,grid2), maskset = mask, 
-                       pop.args = popargs, multisession = append.capthist,
+```{r STR run2f, eval = runsim, cache = TRUE, message = FALSE}
+sims2f <- run.scenarios(nrepl, scen2[5:6,], trapset = list(grid1,grid2), maskset = mask, 
+                       pop.args = popnset, multisession = append.capthist,
                        fit.args = fitarg2, fit = TRUE)
 saveRDS(sims2f, file = 'STRsims2f.RDS')
+```
+
+```{r STR run2f1, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
+sims2f1 <- run.scenarios(nrepl, scen2[7:8,], trapset = list(grid1,grid2), maskset = mask, 
+                       pop.args = popnset, multisession = append.capthist,
+                       fit.args = fitarg2, fit = TRUE)
+saveRDS(sims2f1, file = 'STRsims2f1.RDS')
+```
+
+```{r STR run2f2, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
+sims2f2 <- run.scenarios(nrepl, scen2[9:10,], trapset = list(grid1,grid2), maskset = mask, 
+                       pop.args = popnset, multisession = append.capthist,
+                       fit.args = fitarg2, fit = TRUE, extractfn = stratumTable, cov='grid')
+saveRDS(sims2f2, file = 'STRsims2f2.RDS')
+```
+
+```{r STR run2f3, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
+sims2f3 <- run.scenarios(nrepl, scen2[11:12,], trapset = list(grid1,grid2), maskset = mask, 
+                       pop.args = popnset, multisession = append.capthist,
+                       fit.args = fitarg2, fit = TRUE, extractfn = stratumTable, cov = 'grid')
+saveRDS(sims2f3, file = 'STRsims2f3.RDS')
 ```
 
 ## Results
@@ -198,19 +240,35 @@ saveRDS(sims2f, file = 'STRsims2f.RDS')
 ```{r STR results, eval = TRUE, echo = TRUE}
 STRsims1abc  <- readRDS(file = 'STRsims1abc.RDS')
 STRsims1c1c2 <- readRDS(file = 'STRsims1c1c2.RDS')
-STRsims2e <- readRDS(file = 'STRsims2e.RDS')
-STRsims2f <- readRDS(file = 'STRsims2f.RDS')
+STRsims2e    <- readRDS(file = 'STRsims2e.RDS')
+STRsims2f    <- readRDS(file = 'STRsims2f.RDS')
+STRsims2f1   <- readRDS(file = 'STRsims2f1.RDS')
+STRsims2f2   <- readRDS(file = 'STRsims2f2.RDS')
+STRsims2f3   <- readRDS(file = 'STRsims2f3.RDS')
+```
+
+### Varying effort
+
+```{r STR results1, eval = TRUE, echo = TRUE}
 estimateSummary(STRsims1abc)
 stratumSummary(STRsims1c1c2)
+```
+
+### Varying detection (parameter lambda0)
+
+```{r STR results2, eval = TRUE, echo = TRUE}
 estimateSummary(STRsims2e, true = 12.5)
 estimateSummary(STRsims2f, true = 12.5)
+estimateSummary(STRsims2f1, true = 12.5)
+stratumSummary(STRsims2f2)
+stratumSummary(STRsims2f3)
 ```
 
 Note: rRMSE is the root-mean-square error divided by the true density.
 
 $\mbox{rRMSE}(\hat D) = \frac{1}{D} \sqrt {\frac{1}{N} \sum_{i=1}^N {(D - \hat D_i)^2}}$ 
 
-$\mbox{RB}(\hat D) = \frac{1}{N} \sum_{i=1}^N {(D - \hat D_i)}/D$ 
+$\mbox{RB}(\hat D) = \frac{1}{N} \sum_{i=1}^N {(\hat D_i - D)}/D$ 
 
 
 ```{r STR figure, eval = FALSE, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Effect of array size on relative bias (RB) and relative root-mean-square error (rRMSE) of density estimates"}
