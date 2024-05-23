@@ -1,0 +1,218 @@
+---
+title: "**secr** simulations STR"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Stratification and parameter variation STR
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+Covariation of density and effort or detection leads to bias if not adequately modelled.
+
+<!-- To render from (linux) command line use full file path e.g., -->
+<!-- Rscript -e "rmarkdown::render('/home/effmu21p/STR/secr-simulations-STR.rmd')" -->
+
+## Settings
+
+Two square grids of 64 binary proximity detectors at spacing $c = 2$.  
+
+The same conditions were used for simulation and fitting. 
+
+Base scenario
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D | 12.5 (5,20) |
+| lambda0  | 0.1 (0.05,0.15) |
+| sigma    | c/2 |
+| noccasions | 10 |
+| buffer   | $4\sigma$ |
+| nx       | 64 |
+
+## Package version, date and platform
+
+```{r versions, results = 'hold', echo = FALSE}
+source('../setup.R')
+source('stratumTable.R')
+runsim <- TRUE
+metadata()
+```
+
+## Simulation code
+
+### First construct grids
+
+```{r strgrids}
+# start with 8 x 8 grids
+grid1 <- grid2 <- make.grid(8,8, spacing = 40, detector = 'proximity')
+grid2[,1] <- grid2[,1] + 480  # displace to right
+
+covariates(grid1)$grid <- rep(factor(1, levels = 1:2), nrow(grid1))
+covariates(grid2)$grid <- rep(factor(2, levels = 1:2), nrow(grid2))
+
+# grids1a is a smaller grid 6 x 6
+grid1a <- subset(grid1, !apply(grid1, 1, function(x) any(x<20 | x>260)))
+
+# combine
+grids <- rbind(grid1, grid2)
+gridsa <- rbind(grid1a, grid2)
+
+# stratify mask horizontally and vertically
+mask <- make.mask(grids, buffer = 100, spacing = 10)
+covariates(mask)$grid <- factor(1 + (mask$x>380))
+covariates(mask)$D <- c(5,20)[covariates(mask)$grid]
+covariates(mask)$gridy <- factor(1 + (mask$y>140))
+covariates(mask)$Dy <- c(5,20)[covariates(mask)$gridy]
+
+# pops for illustration
+popargs <- list(D = 'D', core = mask, model2D = 'IHP')
+pop <- do.call(sim.popn, popargs)
+popargsy <- list(D = 'Dy', core = mask, model2D = 'IHP')
+popy <- do.call(sim.popn, popargsy)
+```
+
+
+### Plot - as in Efford in prep. Study design
+
+```{r strplot, fig.width=8, fig.height=4}
+par(mfrow=c(2,3), mar=c(1,1,2,1))
+
+plot(mask, cov='grid', legend = FALSE, dots=F, col=c('lightgreen','lightblue'))
+points(pop, pch=16, cex=0.7, col = 'white')
+plot(grid1, add=T, detpar=list(pch=16, cex=0.7))
+plot(grid2, add=T, detpar=list(pch=16, cex=0.7))
+mtext (side=3, adj=0, expression(paste('a. Effort constant, ', hat(italic(D)), ~~'unbiased')), cex=0.9)
+
+plot(mask, cov='gridy', legend = FALSE, dots=F, col=c('lightgreen','lightblue'))
+points(popy, pch=16, cex=0.7, col = 'white')
+plot(grid1a,add=T, detpar=list(pch=16, cex=0.7))
+plot(grid2,add=T, detpar=list(pch=16, cex=0.7))
+mtext (side=3, adj=0, expression(paste('b. Effort uncorrelated, ', hat(italic(D)), ~~'unbiased')), cex=0.9)
+
+plot(mask, cov='grid', legend = FALSE, dots=F, col=c('lightgreen','lightblue'))
+points(pop, pch=16, cex=0.7, col = 'white')
+plot(grid1a,add=T, detpar=list(pch=16, cex=0.7))
+plot(grid2,add=T, detpar=list(pch=16, cex=0.7))
+mtext (side=3, adj=0, expression(paste('c. Effort correlated, ', hat(italic(D)), ~~'biased')), cex=0.9, col='red')
+
+plot(mask, cov='grid', legend = FALSE, dots=F, col=c('lightgreen','lightblue'))
+points(pop, pch=16, cex=0.7, col = 'white')
+plot(grid1, add=T, detpar=list(pch=16, cex=0.7))
+plot(grid2, add=T, detpar=list(pch=16, cex=0.7))
+mtext (side=3, adj=0, expression(paste('d. Detection constant, ', hat(italic(D)), ~~'unbiased')), cex=0.9)
+
+plot(mask, cov='gridy', legend = FALSE, dots=F, col=c('lightgreen','lightblue'))
+points(popy, pch=16, cex=0.7, col = 'white')
+plot(grid1,add=T, detpar=list(pch=16, fg='orange', cex=0.7))
+plot(grid2,add=T, detpar=list(pch=16, cex=0.7))
+mtext (side=3, adj=0, expression(paste('e. Detection uncorrelated, ', hat(italic(D)), ~~'biased')), cex=0.9, col='red')
+
+plot(mask, cov='grid', legend = FALSE, dots=F, col=c('lightgreen','lightblue'))
+points(pop, pch=16, cex=0.7, col = 'white')
+plot(grid1,add=T, detpar=list(pch=16, fg='orange', cex=0.7))
+plot(grid2,add=T, detpar=list(pch=16, cex=0.7))
+mtext (side=3, adj=0, expression(paste('f. Detection correlated, ', hat(italic(D)), ~~'biased')), cex=0.9, col='red')
+```
+
+### Define STR scenarios
+
+```{r STR scenarios, eval = TRUE, message = FALSE, results = "hide"}
+# a. equal effort (2 64-detector grids)
+# b. uncorrelated: patchy detection unrelated to density  (36-detector, 64-detector grids)
+# c. naive: more effort where greater density  (36-detector, 64-detector grids)
+# c1. modelling D  (36-detector, 64-detector grids)
+# c2. independent estimates  (36-detector, 64-detector grids)
+
+scen1 <- make.scenarios(trapsindex = c(1,2,2,2,2), D = 12.5, detectfn='HHN', 
+                       lambda0 = 0.1, sigma = 20, noccasions = 10)
+scen1$popindex <- c(1,2,1,1,1)
+scen1$fitindex <- c(1,1,1,2,3)
+popnset <- list(popargs, popargsy)
+trapset1 <- list(grids, gridsa)
+fitarg1 <- list(list(detectfn = 'HHN', start = list(D = 12.5)),
+               list(detectfn = 'HHN', start = list(D = 12.5), model = D~grid),
+               list(detectfn = 'HHN', start = list(D = 12.5),
+                    model = list(D~grid, lambda0~grid, sigma~grid)))
+scen1
+
+scen2 <- make.scenarios(fitindex=1:2, D = 12.5, groups = 1:2, detectfn='HHN', lambda0 = 0.1, 
+                        sigma = 20, noccasions = 10)
+scen2$lambda0 <- c(0.05, 0.15, 0.05, 0.15)
+scen2$trapsindex <- scen2$group
+trapset2 <- list(grid1, grid2)
+fitarg2 <- list(list(detectfn = 'HHN', start = list(D = 12.5)),
+                list(detectfn = 'HHN', start = list(D = 12.5), model = lambda0~sub))
+scen2
+```
+
+```{r STR scenario summary, cache = TRUE}
+scenarioSummary(scen1, trapset1)
+```
+
+### Run STR simulations
+
+```{r STR run1abc, eval = runsim, cache = TRUE}
+nrepl <- 100
+sims1abc <- run.scenarios(nrepl, scen1[1:3,], trapset = trapset1, maskset = mask, 
+                      pop.args = popnset, fit = TRUE, fit.args = fitarg1)
+saveRDS(sims1abc, file = 'STRsims1abc.RDS')
+```
+
+```{r STR run1c1c2, eval = runsim, cache = TRUE, warning = FALSE}
+sims1c1c2 <- run.scenarios(nrepl, scen1[4:5,], trapset = trapset1, maskset = mask, 
+                      pop.args = popnset, fit = TRUE, fit.args = fitarg1,
+                      extractfn = stratumTable, cov = 'grid')
+saveRDS(sims1c1c2, file = 'STRsims1c1c2.RDS')
+```
+
+```{r STR run2e, eval = runsim, cache = TRUE}
+sims2e <- run.scenarios(nrepl, scen2[1:2,], trapset = list(grid1,grid2), maskset = mask, 
+                       pop.args = popargs, multisession = append.capthist,
+                       fit.args = fitarg2, fit = TRUE)
+saveRDS(sims2e, file = 'STRsims2e.RDS')
+```
+
+```{r STR run2f, eval = runsim, cache = TRUE}
+sims2f <- run.scenarios(nrepl, scen2[3:4,], trapset = list(grid1,grid2), maskset = mask, 
+                       pop.args = popargs, multisession = append.capthist,
+                       fit.args = fitarg2, fit = TRUE)
+saveRDS(sims2f, file = 'STRsims2f.RDS')
+```
+
+## Results
+
+```{r STR results, eval = TRUE, echo = TRUE}
+STRsims1abc  <- readRDS(file = 'STRsims1abc.RDS')
+STRsims1c1c2 <- readRDS(file = 'STRsims1c1c2.RDS')
+STRsims2e <- readRDS(file = 'STRsims2e.RDS')
+STRsims2f <- readRDS(file = 'STRsims2f.RDS')
+estimateSummary(STRsims1abc)
+stratumSummary(STRsims1c1c2)
+estimateSummary(STRsims2e, true = 12.5)
+estimateSummary(STRsims2f, true = 12.5)
+```
+
+Note: rRMSE is the root-mean-square error divided by the true density.
+
+$\mbox{rRMSE}(\hat D) = \frac{1}{D} \sqrt {\frac{1}{N} \sum_{i=1}^N {(D - \hat D_i)^2}}$ 
+
+$\mbox{RB}(\hat D) = \frac{1}{N} \sum_{i=1}^N {(D - \hat D_i)}/D$ 
+
+
+```{r STR figure, eval = FALSE, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Effect of array size on relative bias (RB) and relative root-mean-square error (rRMSE) of density estimates"}
+```
+

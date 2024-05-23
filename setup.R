@@ -62,3 +62,12 @@ countlegend <- function (rows = -5) {
                          'Approximate sigma-hat'))
     print(df[rows,], row.names = FALSE, right = FALSE)
 }
+
+metadata <- function() {
+    cat(paste(R.version.string, '\n'))
+    cat(paste('Platform   ', sessionInfo()$platform, '\n'))
+    cat(paste('Running    ', sessionInfo()$running, '\n'))
+    cat(paste('secr       ', packageVersion('secr'), ' ',  packageDate('secr'), '\n'))
+    cat(paste('secrdesign ', packageVersion('secrdesign'), ' ',  packageDate('secr'), '\n')) 
+    cat(paste('run        ', date(), '\n'))
+}
