@@ -149,7 +149,6 @@ fitarg1 <- list(list(detectfn = 'HHN', start = list(D = 12.5)),
                list(detectfn = 'HHN', start = list(D = 12.5), model = D~grid),
                list(detectfn = 'HHN', start = list(D = 12.5),
                     model = list(D~grid, lambda0~grid, sigma~grid)))
-scen1
 ```
 
 #### Varying detection
@@ -177,7 +176,6 @@ fitarg2 <- list(list(detectfn = 'HHN', start = list(D = 12.5)),
                 list(detectfn = 'HHN', start = list(D = 12.5), model = lambda0~grid),
                 list(detectfn = 'HHN', start = list(D = 12.5), model = D~grid),
                 list(detectfn = 'HHN', start = list(D = 12.5), model = list(D~grid, lambda0~grid))                )
-scen2
 ```
 
 ```{r STR scenario summary, cache = TRUE}
@@ -193,12 +191,16 @@ sims1abc <- run.scenarios(nrepl, scen1[1:3,], trapset = trapset1, maskset = mask
 saveRDS(sims1abc, file = 'STRsims1abc.RDS')
 ```
 
+Models with stratum-specific density estimates use `stratumTable` as the extractfn and cov = 'grid' as the stratification mask covariate (which happens in this case to be equal-area as in the default).
+
 ```{r STR run1c1c2, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
 sims1c1c2 <- run.scenarios(nrepl, scen1[4:5,], trapset = trapset1, maskset = mask, 
                       pop.args = popnset, fit = TRUE, fit.args = fitarg1,
                       extractfn = stratumTable, cov = 'grid')
 saveRDS(sims1c1c2, file = 'STRsims1c1c2.RDS')
 ```
+
+Simulations with distinct lambda0 on each grid use append.capthist (new in secr 4.6.7) to combine the separately simulated capthist objects before a model is fitted.
 
 ```{r STR run2e, eval = runsim, cache = TRUE, message = FALSE}
 sims2e <- run.scenarios(nrepl, scen2[3:4,], trapset = list(grid1,grid2), maskset = mask, 
@@ -237,6 +239,9 @@ saveRDS(sims2f3, file = 'STRsims2f3.RDS')
 
 ## Results
 
+`stratumSummary` is 'stratumTable.R'.
+
+
 ```{r STR results, eval = TRUE, echo = TRUE}
 STRsims1abc  <- readRDS(file = 'STRsims1abc.RDS')
 STRsims1c1c2 <- readRDS(file = 'STRsims1c1c2.RDS')
@@ -247,9 +252,11 @@ STRsims2f2   <- readRDS(file = 'STRsims2f2.RDS')
 STRsims2f3   <- readRDS(file = 'STRsims2f3.RDS')
 ```
 
-### Varying effort
+### Varying effort (grid size)
 
 ```{r STR results1, eval = TRUE, echo = TRUE}
+source('stratumTable.R')
+scen1
 estimateSummary(STRsims1abc)
 stratumSummary(STRsims1c1c2)
 ```
@@ -257,9 +264,12 @@ stratumSummary(STRsims1c1c2)
 ### Varying detection (parameter lambda0)
 
 ```{r STR results2, eval = TRUE, echo = TRUE}
-estimateSummary(STRsims2e, true = 12.5)
-estimateSummary(STRsims2f, true = 12.5)
-estimateSummary(STRsims2f1, true = 12.5)
+scen2
+rbind(
+    estimateSummary(STRsims2e, true = 12.5),
+    estimateSummary(STRsims2f, true = 12.5),
+    estimateSummary(STRsims2f1, true = 12.5)
+)
 stratumSummary(STRsims2f2)
 stratumSummary(STRsims2f3)
 ```
