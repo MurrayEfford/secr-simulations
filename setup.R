@@ -63,11 +63,18 @@ countlegend <- function (rows = -5) {
     print(df[rows,], row.names = FALSE, right = FALSE)
 }
 
-metadata <- function() {
-    cat(paste(R.version.string, '\n'))
-    cat(paste('Platform   ', sessionInfo()$platform, '\n'))
-    cat(paste('Running    ', sessionInfo()$running, '\n'))
-    cat(paste('secr       ', packageVersion('secr'), ' ',  packageDate('secr'), '\n'))
-    cat(paste('secrdesign ', packageVersion('secrdesign'), ' ',  packageDate('secr'), '\n')) 
-    cat(paste('run        ', date(), '\n'))
+metadata <- function(runsim) {
+    if (runsim) {
+        md <- paste0( R.version.string, '\n',
+                    'Platform   ', sessionInfo()$platform, '\n',
+                    'Running    ', sessionInfo()$running, '\n',
+                    'secr       ', packageVersion('secr'), ' ',  packageDate('secr'), '\n',
+                    'secrdesign ', packageVersion('secrdesign'), ' ',  packageDate('secr'), '\n',
+                    'run        ', date(), '\n')
+        saveRDS(md, file = 'metadata.RDS')
+    }
+    else {
+        md <- readRDS('metadata.RDS')
+    }
+    cat(md)
 }

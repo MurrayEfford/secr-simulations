@@ -24,10 +24,12 @@ Covariation of density and effort or detection leads to bias if not adequately m
 
 <!-- To render from (linux) command line use full file path e.g., -->
 <!-- Rscript -e "rmarkdown::render('/home/effmu21p/STR/secr-simulations-STR.rmd')" -->
+<!-- Requires pandoc, see e.g., -->
+<!-- http://tpepler.github.io/howto/howto-render-r-markdown-from-command-line.html -->
 
 ## Settings
 
-Two square grids of 64 binary proximity detectors at spacing $c = 2$.  
+Two square grids of 64 binary proximity detectors at spacing $2\sigma$.  
 
 The same conditions were used for simulation and fitting. 
 
@@ -38,7 +40,7 @@ Base scenario
 | detectfn | 'HHN' |
 | D | 12.5 (5,20) |
 | lambda0  | 0.1 (0.05,0.15) |
-| sigma    | c/2 |
+| sigma    | 20 |
 | noccasions | 10 |
 | buffer   | $4\sigma$ |
 | nx       | 64 |
@@ -48,8 +50,8 @@ Base scenario
 ```{r versions, results = 'hold', echo = FALSE}
 source('../setup.R')
 source('stratumTable.R')
-runsim <- TRUE
-metadata()
+runsim <- FALSE
+metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
 ## Simulation code
@@ -151,26 +153,47 @@ fitarg1 <- list(list(detectfn = 'HHN', start = list(D = 12.5)),
                     model = list(D~grid, lambda0~grid, sigma~grid)))
 ```
 
+Also try varying allocation between low- and high-density strata. Number of detectors in each varies from 1 to 15 rows of 8 detectors, while keeping total constant at 128 detectors.  Consider both high effort ('v', 10 occasions) and low effort ('v4', 4 occasions).
+
+```{r STR scenarios 1v, eval = TRUE, message = FALSE, results = "hide"}
+# c1v. modelling D  (varying grids)
+oney <- function (y = 8) {
+    grid1 <- make.grid(8,y, detector = 'proximity', spacing = 40)
+    grid2 <- make.grid(8,16-y, detector = 'proximity', spacing = 40)
+    grid2[,1] <- grid2[,1] + 480  # displace to right
+    rbind(grid1, grid2)
+}
+trapset1v <- lapply(15:1, oney)
+maskv <- make.mask(trapset1v[[15]], buffer = 100, spacing = 10)
+covariates(maskv)$grid <- factor(1 + (maskv$x>380))
+covariates(maskv)$D <- c(5,20)[covariates(maskv)$grid]
+scen1v <- make.scenarios(trapsindex = 1:15, D = 12.5, detectfn='HHN', 
+                       lambda0 = 0.1, sigma = 20, noccasions = 10, fitindex = 2)
+
+scen1v4 <- make.scenarios(trapsindex = 1:15, D = 12.5, detectfn='HHN', 
+                       lambda0 = 0.1, sigma = 20, noccasions = 4, fitindex = 2)
+popargsv <- list(D = 'D', core = maskv, model2D = 'IHP')
+```
+
 #### Varying detection
 
 Use 'groups' to define sub-scenarios with differing detection on different subgrids.
 
 ```{r STR scenarios 2, eval = TRUE, message = FALSE, results = "hide"}
-# d. equal detection (repeats a. so not simulated)
-# e. detection uncorrelated: patchy detection unrelated to density
-# f. detection correlated
+# d.  equal detection (repeats a. so not simulated)
+# e.  detection uncorrelated: patchy detection unrelated to density
+# e1. detection uncorrelated and modelled
+# f.  detection correlated
 # f1. detection correlated and modelled
 # f2. detection correlated, D modelled
 # f3. detection correlated and modelled with D
 
-scen2 <- make.scenarios(fitindex=c(1,1,1,2,3,4), D = 12.5, groups = 1:2, detectfn='HHN', 
+scen2 <- make.scenarios(fitindex=c(1,1,2,1,2,3,4), D = 12.5, groups = 1:2, detectfn='HHN', 
                         lambda0 = 0.1, sigma = 20, noccasions = 10)
-scen2$lambda0[3:12] <- rep(c(0.15, 0.05),5)
+scen2$lambda0[3:14] <- rep(c(0.15, 0.05),6)
 scen2$trapsindex <- scen2$group
-scen2
 popnset <- list(popargs, popargsy)
-scen2$popindex <- rep(c(1,2,1,1,1,1), each = 2)
-scen2$fitindex <- rep(c(1,1,1,2,3,4), each = 2)
+scen2$popindex <- rep(c(1,2,2,1,1,1,1), each = 2)
 trapset2 <- list(grid1, grid2)
 fitarg2 <- list(list(detectfn = 'HHN', start = list(D = 12.5)),
                 list(detectfn = 'HHN', start = list(D = 12.5), model = lambda0~grid),
@@ -200,6 +223,20 @@ sims1c1c2 <- run.scenarios(nrepl, scen1[4:5,], trapset = trapset1, maskset = mas
 saveRDS(sims1c1c2, file = 'STRsims1c1c2.RDS')
 ```
 
+```{r STR run1cv, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
+sims1cv <- run.scenarios(nrepl, scen1v, trapset = trapset1v, maskset = maskv, 
+                      pop.args = popargsv, fit = TRUE, fit.args = fitarg1,
+                      extractfn = stratumTable, cov = 'grid')
+saveRDS(sims1cv, file = 'STRsims1cv.RDS')
+```
+
+```{r STR run1cv4, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
+sims1cv4 <- run.scenarios(nrepl, scen1v4, trapset = trapset1v, maskset = maskv, 
+                      pop.args = popargsv, fit = TRUE, fit.args = fitarg1,
+                      extractfn = stratumTable, cov = 'grid')
+saveRDS(sims1cv4, file = 'STRsims1cv4.RDS')
+```
+
 Simulations with distinct lambda0 on each grid use append.capthist (new in secr 4.6.7) to combine the separately simulated capthist objects before a model is fitted.
 
 ```{r STR run2e, eval = runsim, cache = TRUE, message = FALSE}
@@ -209,29 +246,36 @@ sims2e <- run.scenarios(nrepl, scen2[3:4,], trapset = list(grid1,grid2), maskset
 saveRDS(sims2e, file = 'STRsims2e.RDS')
 ```
 
+```{r STR run2e1, eval = runsim, cache = TRUE, message = FALSE}
+sims2e1 <- run.scenarios(nrepl, scen2[5:6,], trapset = list(grid1,grid2), maskset = mask, 
+                       pop.args = popnset, multisession = append.capthist,
+                       fit.args = fitarg2, fit = TRUE)
+saveRDS(sims2e1, file = 'STRsims2e1.RDS')
+```
+
 ```{r STR run2f, eval = runsim, cache = TRUE, message = FALSE}
-sims2f <- run.scenarios(nrepl, scen2[5:6,], trapset = list(grid1,grid2), maskset = mask, 
+sims2f <- run.scenarios(nrepl, scen2[7:8,], trapset = list(grid1,grid2), maskset = mask, 
                        pop.args = popnset, multisession = append.capthist,
                        fit.args = fitarg2, fit = TRUE)
 saveRDS(sims2f, file = 'STRsims2f.RDS')
 ```
 
 ```{r STR run2f1, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
-sims2f1 <- run.scenarios(nrepl, scen2[7:8,], trapset = list(grid1,grid2), maskset = mask, 
+sims2f1 <- run.scenarios(nrepl, scen2[9:10,], trapset = list(grid1,grid2), maskset = mask, 
                        pop.args = popnset, multisession = append.capthist,
                        fit.args = fitarg2, fit = TRUE)
 saveRDS(sims2f1, file = 'STRsims2f1.RDS')
 ```
 
 ```{r STR run2f2, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
-sims2f2 <- run.scenarios(nrepl, scen2[9:10,], trapset = list(grid1,grid2), maskset = mask, 
+sims2f2 <- run.scenarios(nrepl, scen2[11:12,], trapset = list(grid1,grid2), maskset = mask, 
                        pop.args = popnset, multisession = append.capthist,
                        fit.args = fitarg2, fit = TRUE, extractfn = stratumTable, cov='grid')
 saveRDS(sims2f2, file = 'STRsims2f2.RDS')
 ```
 
 ```{r STR run2f3, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
-sims2f3 <- run.scenarios(nrepl, scen2[11:12,], trapset = list(grid1,grid2), maskset = mask, 
+sims2f3 <- run.scenarios(nrepl, scen2[13:14,], trapset = list(grid1,grid2), maskset = mask, 
                        pop.args = popnset, multisession = append.capthist,
                        fit.args = fitarg2, fit = TRUE, extractfn = stratumTable, cov = 'grid')
 saveRDS(sims2f3, file = 'STRsims2f3.RDS')
@@ -239,13 +283,35 @@ saveRDS(sims2f3, file = 'STRsims2f3.RDS')
 
 ## Results
 
-`stratumSummary` is 'stratumTable.R'.
+Effort scenarios involve either two equal 64-detector grids or one 36-detector grid and one 64-detector grid.
 
+Detection scenarios involve two equal 64-detector grids, with equal $\lambda_0$ (0.1) or unequal $\lambda_0$ (0.15,0.05).
+
+| Code | Series | Scenario | Description | Model | RB($\hat D$) |
+|:---|:---|:---|:------------|:-------------|:-------|
+| a  | 1 | 1 | equal effort | D~1, lambda0~1, sigma~1 | +0.02 |
+| b  | 1 | 2 | effort uncorrelated | D~1, lambda0~1, sigma~1 | +0.02 | 
+| c  | 1 | 3 | effort high where greater density | D~1, lambda0~1, sigma~1 | **+0.17** |
+| c1 | 1 | 4 | | D~grid, lambda0~1, sigma~1 | 0.00* |
+| c2 | 1 | 5 | | D~grid, lambda0~grid, sigma~grid | +0.02* |
+| d  | 2 | 1 | equal detection (repeats a) | D~1, lambda0~1, sigma~1 |  |
+| e  | 2 | 2 | detection uncorrelated | D~1, lambda0~1, sigma~1 | **--0.14**|
+| e1 | 2 | 3 |  | D~1, lambda0~grid, sigma~1 | 0.00 |
+| f  | 2 | 4 | detection high where low density | D~1, lambda0~1, sigma~1 | **--0.15** |
+| f1 | 2 | 5 |  | D~1, lambda0~grid, sigma~1 | **--0.18** |
+| f2 | 2 | 6 |  | D~grid, lambda0~1, sigma~1 | **--0.15** * |
+| f3 | 2 | 7 |  | D~grid, lambda0~grid, sigma~1 | +0.01 * |
+
+Table: Summary of simulations. Large relative bias in **bold** face.
+\* area-weighted estimate of total density from stratified model
 
 ```{r STR results, eval = TRUE, echo = TRUE}
 STRsims1abc  <- readRDS(file = 'STRsims1abc.RDS')
 STRsims1c1c2 <- readRDS(file = 'STRsims1c1c2.RDS')
+STRsims1cv   <- readRDS(file = 'STRsims1cv.RDS')
+STRsims1cv4  <- readRDS(file = 'STRsims1cv4.RDS')
 STRsims2e    <- readRDS(file = 'STRsims2e.RDS')
+STRsims2e1   <- readRDS(file = 'STRsims2e1.RDS')
 STRsims2f    <- readRDS(file = 'STRsims2f.RDS')
 STRsims2f1   <- readRDS(file = 'STRsims2f1.RDS')
 STRsims2f2   <- readRDS(file = 'STRsims2f2.RDS')
@@ -254,20 +320,57 @@ STRsims2f3   <- readRDS(file = 'STRsims2f3.RDS')
 
 ### Varying effort (grid size)
 
+`stratumSummary` is in 'stratumTable.R'.
+
 ```{r STR results1, eval = TRUE, echo = TRUE}
 source('stratumTable.R')
-scen1
+scen1[, -c(5,10)]
 estimateSummary(STRsims1abc)
 stratumSummary(STRsims1c1c2)
+stratumSummary(STRsims1cv)
+stratumSummary(STRsims1cv4)
 ```
+
+```{r STR scenarios 1vplot, eval = TRUE, fig.width=8, fig.height=2.5, message = FALSE, results = "hide"}
+plotone <- function(tr) {
+    plot(maskv, cov='grid', legend = FALSE, dots=F, col=c('lightgreen','lightblue'))
+    plot (tr, add = TRUE, detpar=list(pch=16, cex=0.5))
+}
+par(mfrow = c(1,5), mar = c(1,1,1,1), oma = c(3,1,1,1))
+sapply(trapset1v[c(1,4,8,12,15)], plotone)
+mtext(paste0(c(1,4,8,12,15), '/16'), outer=TRUE, side = 1, line = -2, 
+      at= c(0.1, 0.3, 0.5, 0.7, 0.9), cex = 0.8)
+mtext('Fraction of effort in high-density stratum', 
+      outer = TRUE, side=1, line=0, cex=0.9)
+```
+
+Figure: Varying allocation of effort; examples from full spectrum. 
+
+```{r STR results1v, eval = TRUE, echo = TRUE}
+source('stratumTable.R')
+ss1cv <- stratumSummary(STRsims1cv)
+ss1cv4 <- stratumSummary(STRsims1cv4)
+par(mfrow = c(1,1))
+plot(0,0, type = 'n', xlim = c(0,1), ylim = c(0.0,0.30), 
+     xlab = 'Fraction of effort',
+     ylab = 'RSE D-hat')
+x <- (1:15)/16
+rse1cv <- sapply(ss1cv, '[', 'Total','RSE')
+rse1cv4 <- sapply(ss1cv4, '[', 'Total','RSE')
+points(x, rse1cv, pch = 16)
+points(x, rse1cv4, pch = 1)
+```
+
+Figure: Effect of varying allocation of effort on precision of $\hat D$. Open circles 4 occasions, filled circles 10 occasions. 
 
 ### Varying detection (parameter lambda0)
 
 ```{r STR results2, eval = TRUE, echo = TRUE}
-scen2
+scen2[, -c(5,10)]
 rbind(
-    estimateSummary(STRsims2e, true = 12.5),
-    estimateSummary(STRsims2f, true = 12.5),
+    estimateSummary(STRsims2e,  true = 12.5),
+    estimateSummary(STRsims2e1, true = 12.5),
+    estimateSummary(STRsims2f,  true = 12.5),
     estimateSummary(STRsims2f1, true = 12.5)
 )
 stratumSummary(STRsims2f2)
