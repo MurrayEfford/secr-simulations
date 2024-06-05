@@ -11,7 +11,7 @@
 
 <meta name="author" content="Murray Efford" />
 
-<meta name="date" content="2024-04-27" />
+<meta name="date" content="2024-06-06" />
 
 <title>secr simulations ARR</title>
 
@@ -358,7 +358,7 @@ display: none;
 
 <h1 class="title toc-ignore"><strong>secr</strong> simulations ARR</h1>
 <h4 class="author">Murray Efford</h4>
-<h4 class="date">2024-04-27</h4>
+<h4 class="date">2024-06-06</h4>
 
 </div>
 
@@ -440,18 +440,21 @@ Table 3).</p>
 </div>
 <div id="package-version-date-and-platform" class="section level2">
 <h2>Package version, date and platform</h2>
-<p>R version 4.3.0 (2023-04-21)<br />
-Platform: x86_64-pc-linux-gnu (64-bit)<br />
-Running under: Red Hat Enterprise Linux 8.6 (Ootpa)</p>
-<p>secrdesign_2.9.1<br />
-secr_4.6.7</p>
+<pre><code>## Loading required package: secr</code></pre>
+<pre><code>## This is secr 4.6.7. For overview type ?secr</code></pre>
+<pre><code>## This is secrdesign 2.9.2 . For overview type ?secrdesign</code></pre>
+<pre><code>## R version 4.3.0 (2023-04-21)
+## Platform   x86_64-pc-linux-gnu (64-bit)
+## Running    Red Hat Enterprise Linux 8.6 (Ootpa)
+## secr       4.6.7 2024-05-18
+## secrdesign 2.9.2 2024-05-18
+## run        Thu Jun  6 06:56:47 2024</code></pre>
 </div>
 <div id="simulation-code" class="section level2">
 <h2>Simulation code</h2>
 <div id="define-arr-scenarios" class="section level3">
 <h3>Define ARR scenarios</h3>
-<pre class="r"><code>source(&#39;../setup.R&#39;)
-grid &lt;- make.grid(nx = 8, ny = 8, spacing = 40, detector = &quot;proximity&quot;)
+<pre class="r"><code>grid &lt;- make.grid(nx = 8, ny = 8, spacing = 40, detector = &quot;proximity&quot;)
 fitarg &lt;- expand.arg(detectfn = c(14,16))
 ratio &lt;- seq(0.5,2.5,0.25)
 R95 &lt;- max(dist(grid)) / ratio

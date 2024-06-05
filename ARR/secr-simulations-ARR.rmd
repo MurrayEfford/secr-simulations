@@ -45,7 +45,7 @@ The same conditions were used for simulation and fitting.
 
 ```{r versions, results = 'hold', echo = FALSE}
 source('../setup.R')
-runsim <- TRUE
+runsim <- FALSE
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
@@ -71,7 +71,7 @@ scenarioSummary(scen, grid)
 
 ### Run ARR simulations
 
-```{r ARR run, eval = runsim, cache = TRUE}
+```{r ARR run, eval = runsim, cache = TRUE, warning = FALSE}
 ARRsims <- run.scenarios(nrepl = 500, scen, trapset = grid, nx = 64,
     fit = TRUE, fit.args = fitarg, seed = 12345)
 saveRDS(ARRsims, file = 'ARRsims.RDS')
