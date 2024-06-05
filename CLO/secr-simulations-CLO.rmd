@@ -77,7 +77,7 @@ scen <- make.scenarios(D = 0.001, noccasions = 1, detectfn = 'HHN', lambda0 = 0.
                         sigma = 2000, popindex=1:length(poparg))
 ```
 
-```{r CLO code1, eval = runsim}
+```{r CLO code1, eval = runsim, warning = FALSE}
 CLOcounts <- run.scenarios(nrepl = nrepl, scen, trapset = grid, pop.args = poparg, 
                            det.args = detarg, joinsessions = TRUE, seed = 12345)
 
