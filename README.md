@@ -19,7 +19,6 @@ Follow the HTML link for results and the RMD link for R code.
 | [Mh]   | [Mh rmd]   | Individual heterogeneity |
 | [Mt]   | [Mt rmd]   | Temporal variation |
 | [OU]   | [OU rmd]   | Serial correlation of location within home range |
-| [REP]  | [REP rmd]  | Representative sampling |
 | [SARE] | [SARE rmd] | Spatially autocorrelated random effects<sup>1</sup> |
 | [STR]  | [STR rmd]  | Stratification and spatial variation in density, effort and detection |
 
@@ -48,7 +47,6 @@ Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structu
 [Mh]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mh/secr-simulations-Mh.html
 [Mt]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mt/secr-simulations-Mt.html
 [OU]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/OU/secr-simulations-OU.html
-[REP]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/REP/secr-simulations-REP.html
 [SARE]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/SARE/secr-simulations-SARE.html
 [STR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/STR/secr-simulations-STR.html
 
