@@ -110,7 +110,7 @@ scenarioSummary(scen, grid)
 
 ### Run Mh simulations
 
-```{r Mh-run, eval = runsim}
+```{r Mh-run, eval = runsim, warning = FALSE}
 Mhsims <- run.scenarios(
     nrepl     = 500, 
     scenarios = scen, 

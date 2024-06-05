@@ -80,7 +80,7 @@ Mbraw <- run.scenarios(nrepl = 100, scen, trapset = grid, det.args = detarg,
 
 ### Run Mb simulations
 
-```{r Mb-run, eval = runsim}
+```{r Mb-run, eval = runsim, warning = FALSE}
 Mbsims <- run.scenarios(nrepl = 200, scen, trapset = grid, det.args = detarg, 
     fit = TRUE, fit.args = fitarg, seed = 12345)
 saveRDS(Mbsims, file = 'Mbsims.RDS')

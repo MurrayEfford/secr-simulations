@@ -75,7 +75,7 @@ scen <- make.scenarios(D = 0.001, noccasions = 1, detectfn = 'HHN', lambda0 = 0.
                         sigma = 2000, popindex=1:length(moves))
 ```
 
-```{r DNC code1, eval = runsim}
+```{r DNC code1, eval = runsim, warning = FALSE}
 DNCsims <- run.scenarios(nrepl = 500, scen, trapset = grid, pop.args = popargs, 
                          det.args = detarg, joinsessions = TRUE, fit = TRUE, 
                          fit.args = fitarg, seed = 12345)

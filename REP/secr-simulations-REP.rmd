@@ -191,7 +191,7 @@ scenarioSummary(scen, layouts)
 
 ### Run REP simulations
 
-```{r REP run, eval = runsim, cache = TRUE}
+```{r REP run, eval = runsim, cache = TRUE, warning = FALSE}
 REPsims <- run.scenarios(nrepl = 500, scen, trapset = grid, nx = 64,
                          fit = TRUE, fit.args = fitarg, seed = 12345)
 saveRDS(REPsims, file = 'REPsims.RDS')

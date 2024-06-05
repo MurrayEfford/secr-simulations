@@ -172,7 +172,7 @@ scen   <- make.scenarios(D = 1, lambda0 = 0.5, sigma = 100,  detectfn = 'HHN',
 scenarioSummary(scen, trapset = trps)
 ```
 
-```{r LDF old2 shared run, eval = runsim}
+```{r LDF old2 shared run, eval = runsim, warning = FALSE}
 LDFsimsold2shared <- run.scenarios(3, scen, trapset = trps, CH.function = "simLDF.capthist",
               pop.args = poparg, det.args = detarg, fit = TRUE, fit.args = fitarg)
 saveRDS(LDFsimsold2shared, file = 'LDFsimsold2shared.RDS')
@@ -300,7 +300,7 @@ scen   <- make.scenarios(D = 29/maskarea(mask64), lambda0 = exp(-1), sigma = 0.1
         detectfn = 'HHN', detindex = 1:length(detarg), noccasions = 5)
 ```
 
-```{r GCR run, eval = runsim}
+```{r GCR run, eval = runsim, warning = FALSE}
 GCRsims <- run.scenarios(100, scen, trapset = grid64, maskset = mask64, 
     CH.function = "simGCR.capthist", pop.args = poparg, det.args = detarg, 
     fit = TRUE, fit.args = fitarg)

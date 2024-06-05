@@ -111,7 +111,7 @@ apply(CVmat,2,mean)
 
 ### Run Mt simulations
 
-```{r Mt run, eval = runsim}
+```{r Mt run, eval = runsim, warning = FALSE}
 Mtsims <- run.scenarios(nrepl = 200, scen, trapset = grid, det.args = detarg, 
     CH.function = "simCV.capthist", fit = TRUE, fit.args = fitarg, seed = 12345)
 saveRDS(Mtsims, file = 'Mtsims.RDS')

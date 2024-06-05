@@ -120,7 +120,7 @@ scen <- make.scenarios( D = 2, lambda0 = taulevels, sigma = 100,
                         noccasions = nstep, detectfn = 14)
 ```
 
-```{r OUcode, eval = FALSE}
+```{r OUcode, eval = FALSE, warning = FALSE}
 OUsims <- run.scenarios(
     nrepl       = 500, 
     scenarios   = scen, 
