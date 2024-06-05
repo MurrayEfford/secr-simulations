@@ -44,14 +44,12 @@ The same conditions were used for simulation and fitting.
 
 ## Package version, date and platform
 
-**secr** 4.6.7
 
-**secrdesign** 2.9.0
-
-R version 4.3.2 (2023-10-31 ucrt)
-Platform: x86_64-w64-mingw32/x64 (64-bit)
-Running under: Windows 11 x64 (build 22631)
-
+```{r versions, results = 'hold', echo = FALSE}
+source('../setup.R')
+runsim <- TRUE
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
 ## Simulation code
 
 ### Custom function to simulate capture histories
@@ -113,7 +111,7 @@ apply(CVmat,2,mean)
 
 ### Run Mt simulations
 
-```{r Mt run, eval = FALSE}
+```{r Mt run, eval = runsim}
 Mtsims <- run.scenarios(nrepl = 200, scen, trapset = grid, det.args = detarg, 
     CH.function = "simCV.capthist", fit = TRUE, fit.args = fitarg, seed = 12345)
 saveRDS(Mtsims, file = 'Mtsims.RDS')

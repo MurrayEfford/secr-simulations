@@ -54,11 +54,14 @@ The primary scenarios considered by Stevenson et al. (2021) and Moqanaki et al. 
 
 We wish to reproduce the simulation results of Stevenson et al. (2021) for a range of values of  $\sigma_u$ and $\rho$, and extend them to the case that the LDF is shared across individuals.
 
-## Settings
-
-
 ## Package version, date and platform
 
+
+```{r versions, results = 'hold', echo = FALSE}
+source('../setup.R')
+runsim <- TRUE
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
 
 ## Simulation code
 
@@ -169,7 +172,7 @@ scen   <- make.scenarios(D = 1, lambda0 = 0.5, sigma = 100,  detectfn = 'HHN',
 scenarioSummary(scen, trapset = trps)
 ```
 
-```{r LDF old2 shared run, eval = FALSE}
+```{r LDF old2 shared run, eval = runsim}
 LDFsimsold2shared <- run.scenarios(3, scen, trapset = trps, CH.function = "simLDF.capthist",
               pop.args = poparg, det.args = detarg, fit = TRUE, fit.args = fitarg)
 saveRDS(LDFsimsold2shared, file = 'LDFsimsold2shared.RDS')
@@ -297,7 +300,7 @@ scen   <- make.scenarios(D = 29/maskarea(mask64), lambda0 = exp(-1), sigma = 0.1
         detectfn = 'HHN', detindex = 1:length(detarg), noccasions = 5)
 ```
 
-```{r GCR run, eval = FALSE}
+```{r GCR run, eval = runsim}
 GCRsims <- run.scenarios(100, scen, trapset = grid64, maskset = mask64, 
     CH.function = "simGCR.capthist", pop.args = poparg, det.args = detarg, 
     fit = TRUE, fit.args = fitarg)
@@ -318,7 +321,6 @@ cbind(parameter = c('D','lambda0','sigma'), tmp[,-1])
 ```
 
 Negligible bias in $\hat D$ but wild bias in $\hat \lambda_0$ and $\hat \sigma$.
-
 
 ```{r GCR summary 2, echo = FALSE, eval = FALSE}
 # look at separate estimates

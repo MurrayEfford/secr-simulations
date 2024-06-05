@@ -651,14 +651,11 @@ The same conditions used for simulation and fitting.
 
 ## Package version, date and platform
 
-**secrdesign** 2.9.1  
-**secr** 4.6.7  
-
-2024-03-29
-
-R version 4.3.0 (2023-04-21)
-Platform: x86_64-pc-linux-gnu (64-bit)
-Running under: Red Hat Enterprise Linux 8.6 (Ootpa)
+```{r versions, results = 'hold', echo = FALSE}
+source('../setup.R')
+runsim <- TRUE
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
 
 ## Simulation code
 
@@ -708,7 +705,7 @@ temprpsv <- MoranXSummary(DEYtest, 'rpsv')
 parm <- attr(detarg, 'comb')[,1,drop=F]
 ```
 
-```{r DEY run, eval = FALSE}
+```{r DEY run, eval = runsim}
 DEYsims <- run.scenarios(
     nrepl       = 100, 
     scenarios   = scen, 
@@ -767,7 +764,7 @@ dimnames(temp) <- list(NULL,  c('n', 'n+r', 'mean.p0', 'sd.p0', 'MoranI'))
 cbind(scen[,c('g0', 'detindex')], round(temp,3))
 ```
 
-```{r DEY run 2, eval = FALSE}
+```{r DEY run 2, eval = runsim}
 DEYsims2 <- run.scenarios(
     nrepl       = 100, 
     scenarios   = scen, 

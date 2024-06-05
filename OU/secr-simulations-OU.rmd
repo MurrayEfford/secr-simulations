@@ -47,9 +47,11 @@ Here 'sigma' is the overall scale of the O-U distribution and 'tau' determines t
 
 ## Package version, date and platform
 
-**secr** 4.6.7  
-**secrdesign** 2.9.1
-Run on Matrix 2024-03-20:
+```{r versions, results = 'hold', echo = FALSE}
+source('../setup.R')
+runsim <- TRUE
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
 
 ## Simulation code
 

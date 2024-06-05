@@ -44,13 +44,11 @@ Weekly 'sessions' were joined in `run.scenarios` for the final single-session an
 
 ## Package version, date and platform
 
-**secr** 4.6.7 
-**secrdesign** 2.9.1
-
-Run on Matrix 2024-03-21:
-
-R version 4.3.0 (2023-04-21)  
-Platform: x86_64-pc-linux-gnu (64-bit)  
+```{r versions, results = 'hold', echo = FALSE}
+source('../setup.R')
+runsim <- TRUE
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
 
 ## Simulation code
 
@@ -77,7 +75,7 @@ scen <- make.scenarios(D = 0.001, noccasions = 1, detectfn = 'HHN', lambda0 = 0.
                         sigma = 2000, popindex=1:length(moves))
 ```
 
-```{r DNC code1, eval = FALSE}
+```{r DNC code1, eval = runsim}
 DNCsims <- run.scenarios(nrepl = 500, scen, trapset = grid, pop.args = popargs, 
                          det.args = detarg, joinsessions = TRUE, fit = TRUE, 
                          fit.args = fitarg, seed = 12345)

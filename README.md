@@ -10,16 +10,17 @@ Follow the HTML link for results and the RMD link for R code.
 
 | HTML | RMD | Simulation| 
 |:-|:--|:--------------------|
+| [ARR]  | [ARR rmd]  | Size of array |
 | [CLO]  | [CLO rmd]  | Failure of closure due to mortality and recruitment |
 | [DNC]  | [DNC rmd]  | Failure of closure due to dispersal |
+| [LDF]  | [LDF rmd]  | Latent detection field (Stevenson et al. 2021) |
 | [MID]  | [MID rmd]  | Mis-identification |
-| [Mt]   | [Mt rmd]   | Temporal variation |
 | [Mb]   | [Mb rmd]   | Behavioural effects |
 | [Mh]   | [Mh rmd]   | Individual heterogeneity |
+| [Mt]   | [Mt rmd]   | Temporal variation |
 | [OU]   | [OU rmd]   | Serial correlation of location within home range |
+| [REP]  | [REP rmd]  | Representative sampling |
 | [SARE] | [SARE rmd] | Spatially autocorrelated random effects<sup>1</sup> |
-| [LDF]  | [LDF rmd]  | Latent detection field (Stevenson et al. 2021) |
-| [ARR]  | [ARR rmd]  | Size of array |
 | [STR]  | [STR rmd]  | Stratification and spatial variation in density, effort and detection |
 
 1. SARE includes the scenarios considered by Royle et al. (2013), Efford (2014), Moqanaki et al. (2021), and Dey et al. (2023)
@@ -38,26 +39,28 @@ Royle, J. A., Chandler, R.B., Sun, C.C., and Fuller, A. K. 2013. Integrating res
 
 Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structures for detections of individuals in spatial capture--recapture models. Biometrics 78: 963--73.
 
+[ARR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/ARR/secr-simulations-ARR.html
 [CLO]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/CLO/secr-simulations-CLO.html
 [DNC]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/DNC/secr-simulations-DNC.html
-[MID]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/MID/secr-simulations-MID.html
 [LDF]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/LDF/secr-simulations-LDF.html
+[MID]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/MID/secr-simulations-MID.html
 [Mb]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mb/secr-simulations-Mb.html
-[Mt]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mt/secr-simulations-Mt.html
 [Mh]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mh/secr-simulations-Mh.html
+[Mt]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mt/secr-simulations-Mt.html
 [OU]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/OU/secr-simulations-OU.html
+[REP]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/REP/secr-simulations-REP.html
 [SARE]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/SARE/secr-simulations-SARE.html
-[ARR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/ARR/secr-simulations-ARR.html
 [STR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/STR/secr-simulations-STR.html
 
+[ARR rmd]: SARE/secr-simulations-ARR.rmd
 [CLO rmd]: CLO/secr-simulations-CLO.rmd
 [DNC rmd]: DNC/secr-simulations-DNC.rmd
-[MID rmd]: DNC/secr-simulations-MID.rmd
 [LDF rmd]: LDF/secr-simulations-LDF.rmd
+[MID rmd]: DNC/secr-simulations-MID.rmd
 [Mb rmd]: Mb/secr-simulations-Mb.rmd
-[Mt rmd]: Mt/secr-simulations-Mt.rmd
 [Mh rmd]: Mh/secr-simulations-Mh.rmd
+[Mt rmd]: Mt/secr-simulations-Mt.rmd
 [OU rmd]: OU/secr-simulations-OU.rmd
+[REP rmd]: REP/secr-simulations-REP.rmd
 [SARE rmd]: SARE/secr-simulations-SARE.rmd
-[ARR rmd]: SARE/secr-simulations-ARR.rmd
 [STR rmd]: STR/secr-simulations-STR.rmd

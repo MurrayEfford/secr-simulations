@@ -44,12 +44,11 @@ The same conditions used for simulation and fitting.
 
 ## Package version, date and platform
 
-**secr** 4.6.7  
-**secrdesign** 2.9.1 
-
-R version 4.3.2 (2023-10-31 ucrt)  
-Platform: x86_64-w64-mingw32/x64 (64-bit)  
-Running under: Windows 11 x64 (build 22631)  
+```{r versions, results = 'hold', echo = FALSE}
+source('../setup.R')
+runsim <- TRUE
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
 
 ## Simulation code
 
@@ -111,7 +110,7 @@ scenarioSummary(scen, grid)
 
 ### Run Mh simulations
 
-```{r Mh-run, eval = FALSE}
+```{r Mh-run, eval = runsim}
 Mhsims <- run.scenarios(
     nrepl     = 500, 
     scenarios = scen, 

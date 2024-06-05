@@ -58,11 +58,11 @@ plot(sim.popn(12.5, grid, buffer = 80), frame = FALSE, add = TRUE, cex = 0.7)
 ```
 ## Package version, date and platform
 
-**secr** 4.6.7  
-**secrdesign** 2.9.1  
-R version 4.3.2 (2023-10-31 ucrt)  
-Platform: x86_64-w64-mingw32/x64 (64-bit)  
-Running under: Windows 11 x64 (build 22631)  
+```{r versions, results = 'hold', echo = FALSE}
+source('../setup.R')
+runsim <- TRUE
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
 
 ## Simulation code
 
@@ -136,7 +136,7 @@ scen1 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14,
 scenarioSummary(scen1, grid)
 ```
 
-```{r MID1-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID1-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims1 <- run.scenarios(nrepl = nrepl, scen1, trapset = grid, det.args = detarg1, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims1, file = 'MIDsims1.RDS')
@@ -152,7 +152,7 @@ scen2 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14,
 scenarioSummary(scen2, grid)
 ```
 
-```{r MID2-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID2-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims2 <- run.scenarios(nrepl = nrepl, scen2, trapset = grid, det.args = detarg2, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims2, file = 'MIDsims2.RDS')
@@ -168,7 +168,7 @@ scen3 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14,
 scenarioSummary(scen3, grid)
 ```
 
-```{r MID3-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID3-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims3 <- run.scenarios(nrepl = nrepl, scen3, trapset = grid, det.args = detarg3, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims3, file = 'MIDsims3.RDS')
@@ -185,7 +185,7 @@ scen4$scenario <- 1:nrow(scen4)
 scenarioSummary(scen4, grid)
 ```
 
-```{r MID4-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID4-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims4 <- run.scenarios(nrepl = nrepl, scen4, trapset = grid, det.args = detarg3, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims4, file = 'MIDsims4.RDS')
@@ -202,7 +202,7 @@ scen5$scenario <- 1:nrow(scen5)
 scenarioSummary(scen5, grid)
 ```
 
-```{r MID5-run, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+```{r MID5-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 MIDsims5 <- run.scenarios(nrepl = nrepl, scen5, trapset = grid, det.args = detarg3, 
     fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
 saveRDS(MIDsims5, file = 'MIDsims5.RDS')
@@ -289,7 +289,6 @@ legend(0, 0.-0.5, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c
 MIDsims3 <- readRDS(file = 'MIDsims3.RDS')
 scenarios <- attr(detarg3, 'comb')
 ```
-
 
 ```{r MID3-table2, eval = TRUE, echo = FALSE}
 cbind(scenarios, getcounts(MIDsims3)[,-5])

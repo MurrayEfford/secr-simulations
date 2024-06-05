@@ -43,19 +43,17 @@ The same conditions were used for simulation and fitting.
 
 ## Package version, date and platform
 
-R version 4.3.0 (2023-04-21)  
-Platform: x86_64-pc-linux-gnu (64-bit)  
-Running under: Red Hat Enterprise Linux 8.6 (Ootpa)  
-
-secrdesign_2.9.1  
-secr_4.6.7  
+```{r versions, results = 'hold', echo = FALSE}
+source('../setup.R')
+runsim <- TRUE
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
 
 ## Simulation code
 
 ### Define ARR scenarios
 
 ```{r ARR scenarios, eval = TRUE, message = FALSE, results = "hide"}
-source('../setup.R')
 grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
 fitarg <- expand.arg(detectfn = c(14,16))
 ratio <- seq(0.5,2.5,0.25)
@@ -73,7 +71,7 @@ scenarioSummary(scen, grid)
 
 ### Run ARR simulations
 
-```{r ARR run, eval = FALSE, cache = TRUE}
+```{r ARR run, eval = runsim, cache = TRUE}
 ARRsims <- run.scenarios(nrepl = 500, scen, trapset = grid, nx = 64,
     fit = TRUE, fit.args = fitarg, seed = 12345)
 saveRDS(ARRsims, file = 'ARRsims.RDS')
