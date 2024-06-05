@@ -50,7 +50,7 @@ Base scenario
 ```{r versions, results = 'hold', echo = FALSE}
 source('../setup.R')
 source('stratumTable.R')
-runsim <- FALSE
+runsim <- TRUE
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
@@ -175,6 +175,27 @@ scen1v4 <- make.scenarios(trapsindex = 1:15, D = 12.5, detectfn='HHN',
 popargsv <- list(D = 'D', core = maskv, model2D = 'IHP')
 ```
 
+Alternatively, reduce number of occasions in the low-density stratum and correspondingly increase those in the high-density stratum:
+
+```{r STR scenarios 1vocc, eval = TRUE, message = FALSE, results = "hide"}
+# c1vocc. modelling D  (varying usage on grids)
+oneocc <- function (occ = 1, sumocc = 10) {
+    grid1 <- make.grid(8,8, detector = 'proximity', spacing = 40)
+    usage(grid1) <- matrix(0,nrow=64, ncol=sumocc-1)
+    grid2 <- grid1
+    usage(grid1)[,1:occ] <- 1
+    usage(grid2)[,1:(sumocc-occ)] <- 1
+    grid2[,1] <- grid2[,1] + 480  # displace to right
+    rbind(grid1, grid2)
+}
+trapset1vocc <- lapply(1:9, oneocc)
+# check reciprocal variation in effort
+t(sapply(trapset1vocc, function(x) apply(usage(x),2,sum)))
+# scenarios for total of 10 occasions
+scen1vocc <- make.scenarios(trapsindex = 1:9, D = 12.5, detectfn='HHN', 
+                       lambda0 = 0.1, sigma = 20, noccasions = 9, fitindex = 2)
+```
+
 #### Varying detection
 
 Use 'groups' to define sub-scenarios with differing detection on different subgrids.
@@ -236,6 +257,14 @@ sims1cv4 <- run.scenarios(nrepl, scen1v4, trapset = trapset1v, maskset = maskv,
                       extractfn = stratumTable, cov = 'grid')
 saveRDS(sims1cv4, file = 'STRsims1cv4.RDS')
 ```
+
+```{r STR run1cvocc, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
+sims1cvocc <- run.scenarios(nrepl, scen1vocc, trapset = trapset1vocc, maskset = maskv, 
+                      pop.args = popargsv, fit = TRUE, fit.args = fitarg1,
+                      extractfn = stratumTable, cov = 'grid')
+saveRDS(sims1cvocc, file = 'STRsims1cvocc.RDS')
+```
+
 
 Simulations with distinct lambda0 on each grid use append.capthist (new in secr 4.6.7) to combine the separately simulated capthist objects before a model is fitted.
 
@@ -310,6 +339,7 @@ STRsims1abc  <- readRDS(file = 'STRsims1abc.RDS')
 STRsims1c1c2 <- readRDS(file = 'STRsims1c1c2.RDS')
 STRsims1cv   <- readRDS(file = 'STRsims1cv.RDS')
 STRsims1cv4  <- readRDS(file = 'STRsims1cv4.RDS')
+STRsims1cvocc <- readRDS(file = 'STRsims1cvocc.RDS')
 STRsims2e    <- readRDS(file = 'STRsims2e.RDS')
 STRsims2e1   <- readRDS(file = 'STRsims2e1.RDS')
 STRsims2f    <- readRDS(file = 'STRsims2f.RDS')
@@ -329,6 +359,7 @@ estimateSummary(STRsims1abc)
 stratumSummary(STRsims1c1c2)
 stratumSummary(STRsims1cv)
 stratumSummary(STRsims1cv4)
+stratumSummary(STRsims1cvocc)
 ```
 
 ```{r STR scenarios 1vplot, eval = TRUE, fig.width=8, fig.height=2.5, message = FALSE, results = "hide"}
