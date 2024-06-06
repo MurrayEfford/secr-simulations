@@ -45,9 +45,11 @@ The same conditions used for simulation and fitting.
 
 ## Package version, date and platform
 
-```{r versions, results = 'hold', echo = FALSE}
+```{r versions, results = 'hold', echo = FALSE, dev = 'jpeg'}
+knitr::opts_chunk$set(dev = 'jpeg')
 source('../setup.R')
-runsim <- TRUE
+runsim <- FALSE
+figures <- TRUE
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
@@ -80,7 +82,7 @@ Mbraw <- run.scenarios(nrepl = 100, scen, trapset = grid, det.args = detarg,
 
 ### Run Mb simulations
 
-```{r Mb-run, eval = runsim, warning = FALSE}
+```{r Mb-run, eval = runsim, cache = TRUE, warning = FALSE}
 Mbsims <- run.scenarios(nrepl = 200, scen, trapset = grid, det.args = detarg, 
     fit = TRUE, fit.args = fitarg, seed = 12345)
 saveRDS(Mbsims, file = 'Mbsims.RDS')
@@ -103,7 +105,7 @@ cat('sigma\n')
 cbind(scenarios, round(estS,4))
 ```
  
-```{r Mb figure, eval = TRUE, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given behavioural variation in lambda0" }
+```{r Mb figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given behavioural variation in lambda0" }
 Mbsims <- readRDS(file = 'Mbsims.RDS')
 estD <- estimateSummary(Mbsims)[,-1]
 estL <- estimateSummary(Mbsims, 'lambda0')[,-1]
@@ -133,7 +135,7 @@ Estimates of density from the null model are not robust to unmodelled behavioura
 
 Run this code to obtain results for a single scenario (here recapfactor = 2). Here we fit both a null model (lambda0~1) and the generating model (lambda0~b).
 
-```{r Mb oneoff, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE}
+```{r Mb oneoff, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE}
 source('../setup.R')
 grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "multi")
 detarg <- list(detectpar = list(recapfactor = 2))
