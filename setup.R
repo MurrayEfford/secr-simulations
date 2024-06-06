@@ -9,7 +9,7 @@
 library(secrdesign)
 nc <- setNumThreads(18)
 options(digits = 5)      # for more readable output
-options(width=100)
+options(width = 100)
 
 # predefine some colours
 yob5 <- RColorBrewer::brewer.pal(n = 5, name = "YlOrBr")
