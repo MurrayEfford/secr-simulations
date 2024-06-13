@@ -11,7 +11,7 @@
 
 <meta name="author" content="Murray Efford" />
 
-<meta name="date" content="2024-06-06" />
+<meta name="date" content="2024-06-14" />
 
 <title>secr simulations ARR</title>
 
@@ -358,7 +358,7 @@ display: none;
 
 <h1 class="title toc-ignore"><strong>secr</strong> simulations ARR</h1>
 <h4 class="author">Murray Efford</h4>
-<h4 class="date">2024-06-06</h4>
+<h4 class="date">2024-06-14</h4>
 
 </div>
 
@@ -440,15 +440,19 @@ Table 3).</p>
 </div>
 <div id="package-version-date-and-platform" class="section level2">
 <h2>Package version, date and platform</h2>
-<pre><code>## Loading required package: secr</code></pre>
-<pre><code>## This is secr 4.6.7. For overview type ?secr</code></pre>
-<pre><code>## This is secrdesign 2.9.2 . For overview type ?secrdesign</code></pre>
-<pre><code>## R version 4.3.0 (2023-04-21)
+<pre class="r"><code>source(&#39;../setup.R&#39;)
+runsim  &lt;- FALSE
+figures &lt;- TRUE
+cache   &lt;- TRUE
+nrepl   &lt;- 500
+metadata(runsim) # if FALSE picks up saved metadata.RDS</code></pre>
+<pre><code>## R version 4.3.2 (2023-10-31)
 ## Platform   x86_64-pc-linux-gnu (64-bit)
-## Running    Red Hat Enterprise Linux 8.6 (Ootpa)
+## Running    CentOS Linux 7 (Core)
 ## secr       4.6.7 2024-05-18
 ## secrdesign 2.9.2 2024-05-18
-## run        Thu Jun  6 06:56:47 2024</code></pre>
+## Threads    40
+## Run        Tue Jun 11 12:46:12 2024</code></pre>
 </div>
 <div id="simulation-code" class="section level2">
 <h2>Simulation code</h2>
@@ -505,19 +509,26 @@ scen$D &lt;- scen$D / (scen$sigma / 20)^2</code></pre>
 </div>
 <div id="run-arr-simulations" class="section level3">
 <h3>Run ARR simulations</h3>
-<pre class="r"><code>ARRsims &lt;- run.scenarios(nrepl = 500, scen, trapset = grid, nx = 64,
-    fit = TRUE, fit.args = fitarg, seed = 12345)
+<pre class="r"><code>ARRsims &lt;- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen, 
+    trapset   = grid, 
+    nx        = 64,
+    fit       = TRUE, 
+    fit.args  = fitarg, 
+    seed      = 12345)
 saveRDS(ARRsims, file = &#39;ARRsims.RDS&#39;)</code></pre>
 </div>
 </div>
 <div id="results" class="section level2">
 <h2>Results</h2>
-<pre class="r"><code>ARRsims &lt;- readRDS(file = &#39;ARRsims.RDS&#39;)
-estD &lt;- estimateSummary(ARRsims)
+<p>ARRsims completed with 500 replicates on 20 threads in 476.2
+minutes.</p>
+<pre class="r"><code>estD &lt;- estimateSummary(ARRsims)
 estD</code></pre>
 <pre><code>##    scenario  true.D nvalid     EST     seEST         RB      seRB     RSE     RMSE   rRMSE   COV
 ## 1         1 0.19141    500 0.20347 0.0028889  0.0630127 0.0150928 0.32971 0.065650 0.34299 0.950
-## 2         2 0.43066    500 0.44277 0.0048213  0.0281141 0.0111950 0.25313 0.108378 0.25165 0.950
+## 2         2 0.43066    500 0.44277 0.0048213  0.0281140 0.0111950 0.25313 0.108378 0.25165 0.950
 ## 3         3 0.76563    500 0.76247 0.0071660 -0.0041191 0.0093597 0.21798 0.160108 0.20912 0.956
 ## 4         4 1.19629    500 1.20077 0.0101543  0.0037419 0.0084882 0.19174 0.226874 0.18965 0.948
 ## 5         5 1.72266    500 1.71717 0.0133240 -0.0031825 0.0077345 0.17358 0.297685 0.17281 0.946

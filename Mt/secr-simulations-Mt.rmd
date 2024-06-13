@@ -45,9 +45,12 @@ The same conditions were used for simulation and fitting.
 ## Package version, date and platform
 
 
-```{r versions, results = 'hold', echo = FALSE}
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim <- TRUE
+runsim  <- FALSE
+figures <- TRUE
+cache   <- TRUE
+nrepl   <- 200
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 ## Simulation code
@@ -57,7 +60,6 @@ metadata(runsim) # if FALSE picks up saved metadata.RDS
 We vary the time-specific detection parameters at each replicate, using a log-normal random variate to keep values positive.
 
 ```{r Mt capthist}
-source('../setup.R')
 simCV.capthist <- function (detectpar = list(), CVlambda0 = 0, CVsigma =0, ...)
 {
     nocc <- list(...)$noccasions
@@ -71,7 +73,7 @@ simCV.capthist <- function (detectpar = list(), CVlambda0 = 0, CVsigma =0, ...)
 
 Visualising the parameter distributions:
 
-```{r Mt demo}
+```{r Mt demo, eval = figures}
 par(mfrow=c(1,2))
 cvlevels <- c(0.1, 0.2, 0.3, 0.4)
 lam0 <- lapply(cvlevels, secr::rlnormCV, n = 10000, mean = 0.1)
@@ -94,15 +96,22 @@ scen <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14,
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg), fitindex = 1)
 ```
 
-```{r Mt scenario summary, cache = TRUE}
+```{r Mt scenario summary, cache = cache}
 scenarioSummary(scen, grid)
 ```
 
 ### Check empirical CV of counts per occasion
 
-```{r Mt counts, echo = TRUE, eval = TRUE, cache = TRUE, message = FALSE}
-Mtraw <- run.scenarios(nrepl = 100, scen, trapset = grid, det.args = detarg, 
-    CH.function = "simCV.capthist", fit = FALSE, seed = 12345, extractfn = identity)
+```{r Mt counts, echo = TRUE, eval = TRUE, cache = cache, message = FALSE}
+Mtraw <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen, 
+    trapset     = grid, 
+    det.args    = detarg, 
+    CH.function = "simCV.capthist", 
+    fit         = FALSE, 
+    seed        = 12345, 
+    extractfn   = identity)
 # average CV(detections) for each scenario
 cvt <- function(y) CV(apply(y,2,sum))  # temporal CV(detections)
 CVmat <- sapply(Mtraw$output, function (x) sapply(x, cvt))
@@ -111,17 +120,29 @@ apply(CVmat,2,mean)
 
 ### Run Mt simulations
 
-```{r Mt run, eval = runsim, warning = FALSE}
-Mtsims <- run.scenarios(nrepl = 200, scen, trapset = grid, det.args = detarg, 
-    CH.function = "simCV.capthist", fit = TRUE, fit.args = fitarg, seed = 12345)
+```{r Mt run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+Mtsims <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen, 
+    trapset     = grid, 
+    det.args    = detarg, 
+    CH.function = "simCV.capthist", 
+    fit         = TRUE,  
+    fit.args    = fitarg, 
+    seed        = 12345)
 saveRDS(Mtsims, file = 'Mtsims.RDS')
 ```
+
+```{r Mt readRDS, echo = FALSE}
+Mtsims <- readRDS(file = 'Mtsims.RDS')
+```
+
+Mtsims completed with `r nrepl` replicates in `r round(Mtsims$proctime/60,1)` minutes.
 
 ## Results
 
 ```{r Mt tables, eval = TRUE, echo = FALSE, results = "hold"}
 options(width=110, digits=4)
-Mtsims <- readRDS(file = 'Mtsims.RDS')
 estD <- estimateSummary(Mtsims)[,-1]
 estL <- estimateSummary(Mtsims, 'lambda0')[,-1]
 estS <- estimateSummary(Mtsims, 'sigma')[,-1]
@@ -135,8 +156,7 @@ cat('sigma\n')
 cbind(CVlambda0 = cvl, CVsigma = cvs, estS)
 ```
  
-```{r Mt figure, eval = TRUE, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given temporal variation in lambda0 or sigma" }
-Mtsims <- readRDS(file = 'Mtsims.RDS')
+```{r Mt figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given temporal variation in lambda0 or sigma" }
 estD <- estimateSummary(Mtsims)[,-1]
 estL <- estimateSummary(Mtsims, 'lambda0')[,-1]
 estS <- estimateSummary(Mtsims, 'sigma')[,-1]
@@ -165,7 +185,7 @@ Estimates of density from the null model are indeed robust to temporal variation
 ## One-off
 
 Run this code to obtain results for a single scenario (here CV(lambda0) = 1). Re-uses code in chunk 'Mt capthist'.
-```{r MT oneoff, eval = TRUE, cache = TRUE, message = FALSE, warning = FALSE}
+```{r MT oneoff, eval = FALSE, cache = TRUE, message = FALSE, warning = FALSE}
 <<Mt capthist>> 
 grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
 detarg <- list(detectpar = list(CVlambda0 = 1, CVsigma = 0))

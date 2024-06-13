@@ -45,11 +45,12 @@ The same conditions used for simulation and fitting.
 
 ## Package version, date and platform
 
-```{r versions, results = 'hold', echo = FALSE, dev = 'jpeg'}
-knitr::opts_chunk$set(dev = 'jpeg')
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim <- FALSE
+runsim  <- FALSE
 figures <- TRUE
+cache   <- TRUE
+nrepl   <- 200
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
@@ -58,14 +59,13 @@ metadata(runsim) # if FALSE picks up saved metadata.RDS
 ### Define Mb scenarios
 
 ```{r Mb scenarios, eval = TRUE, message = FALSE, results = "hide"}
-source('../setup.R')
-grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "multi")
+grid   <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "multi")
 detarg <- expand.arg(
     recapfactor = c(0.25,0.5,1,1.5,2), 
     bk = c(FALSE,TRUE),
     sublist=list(detectpar = c('recapfactor','bk')))
 fitarg <- list(detectfn = 'HHN', model = lambda0 ~ 1)
-scen <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
+scen   <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg), fitindex = 1)
 ```
 
@@ -73,30 +73,36 @@ scen <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14,
 scenarioSummary(scen, grid)
 ```
 
-### Check counts
-
-```{r Mb counts, echo = TRUE, eval = TRUE, cache = TRUE, message = FALSE}
-Mbraw <- run.scenarios(nrepl = 100, scen, trapset = grid, det.args = detarg, 
-    fit = FALSE, seed = 12345, extractfn = identity)
-```
-
 ### Run Mb simulations
 
-```{r Mb-run, eval = runsim, cache = TRUE, warning = FALSE}
-Mbsims <- run.scenarios(nrepl = 200, scen, trapset = grid, det.args = detarg, 
-    fit = TRUE, fit.args = fitarg, seed = 12345)
+```{r Mb-run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+Mbsims <- run.scenarios(
+    nrepl     =  nrepl, 
+    scenarios = scen, 
+    trapset   = grid, 
+    det.args  = detarg, 
+    fit       = TRUE, 
+    fit.args  = fitarg, 
+    seed      = 12345)
 saveRDS(Mbsims, file = 'Mbsims.RDS')
 ```
 
+```{r Mb readRDS, echo = FALSE}
+Mbsims <- readRDS(file = 'Mbsims.RDS')
+```
+
+Mbsims completed with `r nrepl` replicates on `r nc` threads in `r round(Mbsims$proctime/60,1)` minutes.
+
 ## Results
 
-```{r Mb tables, eval = TRUE, echo = FALSE, results = "hold"}
+```{r Mb tables, eval = figures, echo = FALSE, results = "hold"}
 options(width=110, digits=4)
-Mbsims <- readRDS(file = 'Mbsims.RDS')
 scenarios <- t(sapply(detarg, function(x) data.frame(x$detectpar)))
 estD <- estimateSummary(Mbsims)[,-1]
 estL <- estimateSummary(Mbsims, 'lambda0')[,-1]
 estS <- estimateSummary(Mbsims, 'sigma')[,-1]
+cat('Raw counts\n')
+cbind(scenarios, round(getcounts(Mbsims),4))
 cat('Density\n')
 cbind(scenarios, round(estD,4))
 cat('lambda0\n') 
@@ -106,7 +112,6 @@ cbind(scenarios, round(estS,4))
 ```
  
 ```{r Mb figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given behavioural variation in lambda0" }
-Mbsims <- readRDS(file = 'Mbsims.RDS')
 estD <- estimateSummary(Mbsims)[,-1]
 estL <- estimateSummary(Mbsims, 'lambda0')[,-1]
 estS <- estimateSummary(Mbsims, 'sigma')[,-1]
@@ -135,7 +140,7 @@ Estimates of density from the null model are not robust to unmodelled behavioura
 
 Run this code to obtain results for a single scenario (here recapfactor = 2). Here we fit both a null model (lambda0~1) and the generating model (lambda0~b).
 
-```{r Mb oneoff, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE}
+```{r Mb oneoff, eval = FALSE, cache = TRUE, message = FALSE, warning = FALSE}
 source('../setup.R')
 grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "multi")
 detarg <- list(detectpar = list(recapfactor = 2))

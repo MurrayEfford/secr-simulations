@@ -47,10 +47,14 @@ Here 'sigma' is the overall scale of the O-U distribution and 'tau' determines t
 
 ## Package version, date and platform
 
-```{r versions, results = 'hold', echo = FALSE}
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim <- TRUE
+runsim  <- FALSE
+figures <- TRUE
+cache   <- TRUE
+nrepl   <- 200
 metadata(runsim) # if FALSE picks up saved metadata.RDS
+library(mvtnorm)  # for rmvnorm
 ```
 
 ## Simulation code
@@ -107,7 +111,6 @@ simOU.capthist <- function (
 ```
 
 ```{r OU initial, eval = TRUE, message = FALSE, results = "hide"}
-source('../setup.R')
 grid   <- make.grid(nx = 8, ny = 8, spacing = 100, detector = "count")
 detarg <- list(epsilon = 10)
 nstep  <- 100
@@ -120,9 +123,9 @@ scen <- make.scenarios( D = 2, lambda0 = taulevels, sigma = 100,
                         noccasions = nstep, detectfn = 14)
 ```
 
-```{r OUcode, eval = FALSE, warning = FALSE}
+```{r OUcode, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
 OUsims <- run.scenarios(
-    nrepl       = 500, 
+    nrepl       = nrepl, 
     scenarios   = scen, 
     trapset     = grid, 
     det.args    = detarg, 
@@ -133,10 +136,16 @@ OUsims <- run.scenarios(
 saveRDS(OUsims, file = 'OUsims.RDS')
 ```
 
+```{r OU readRDS, echo = FALSE}
+OUsims <- readRDS(file = 'OUsims.RDS')
+```
+
+OUsims completed with `r nrepl` replicates in `r round(OUsims$proctime/60,1)` minutes.
+
 ## Results
 
 First display some examples of movement tracks.
-```{r OU demo1, eval = TRUE, results = "hide", fig.width=7, fig.height=7, fig.cap = "Figure: Examples of correlated movement paths over 100 time steps. Red dot is activity centre; grey circle is 95% contour of activity."}
+```{r OU demo1, eval = figures, results = "hide", fig.width=7, fig.height=7, fig.cap = "Figure: Examples of correlated movement paths over 100 time steps. Red dot is activity centre; grey circle is 95% contour of activity."}
 par(mfrow=c(2,2), mar = c(1,1,2,1), pty='s')
 set.seed(123)
 for (tau in c(0.1,1,10,100)) {
@@ -151,18 +160,17 @@ for (tau in c(0.1,1,10,100)) {
 ```
 
 ```{r OU demo2, eval = FALSE, echo = FALSE}
-# a whole population of autocorrelated walks
+# unused code for a whole population of autocorrelated walks
 popn <- sim.popn(D = 1, core = grid, buffer = 500)
 locs <- simOU.capthist(grid, popn, detectpar = list(lambda0 = 100, sigma = 100), 
                        noccasions = 100, epsilon=10, output = 'locations')
-
 par(mfrow=c(1,1), mar=c(1,1,1,1))
 plot(popn)
 mapply(points, locs, type = 'o', col = 1:length(locs))
 plot(traps, add=T)
 ```
 
-```{r OU rpsv, cache = TRUE, echo = FALSE, fig.width=6, fig.height=6, fig.cap = "Figure: Bivariate normal sigma for varying tau and n.steps", eval = TRUE}
+```{r OU rpsv, eval = figures, cache = TRUE, echo = FALSE, fig.width=6, fig.height=6, fig.cap = "Figure: Bivariate normal sigma for varying tau and n.steps"}
 RPSVxy <- function(xy) {
     n <- nrow(xy)
     ss <- function (x) sum(x^2) - (sum(x))^2/n
@@ -178,7 +186,7 @@ onetau <- function (tau, n.steps) {
 tauval <- 10^seq(-0.5,4,0.5)
 steps <- c(20, 100, 500)
 par(mfrow = c(1,1), mar = c(5,4,4,4))
-plot(1,1,type='n', xlim=range(tauval), log='x', ylim=c(0,120), xlab = 'tau', ylab = 'Sigma-hat')
+plot(1,1, type = 'n', xlim = range(tauval), log = 'x', ylim = c(0,120), xlab = 'tau', ylab = 'Sigma-hat')
 for (i in 1:length(steps)) {
     out <- sapply(tauval, onetau, steps[i])
     lines(tauval, out, pch = 15+i, type = 'b')
@@ -188,7 +196,6 @@ legend(800, 110, legend = steps, lty = 1, pch = 16:18, title = 'n.steps')
 
 Check the mean sample sizes for each scenario
 ```{r OUdatasummary, eval = TRUE, echo = FALSE, results = 'hold'}
-OUsims <- readRDS(file = 'OUsims.RDS')
 counts <- t(sapply(OUsims$output, function(x) apply(sapply(x, attr, 'counts'),1,mean)))
 taulevels <- c(0.1, 1, 5, 10, 20, 50, 100)
 cbind(tau = taulevels, counts[,1:4])
@@ -198,13 +205,12 @@ df <- data.frame(Variable = c('tau','n','r','nmov','dpa'),
                           'Number of recaptures', 
                           'Number of movements', 
                           'Detectors per individual'))
-print(df, row.names=FALSE, right = FALSE)
+print(df, row.names = FALSE, right = FALSE)
 ```
 
 ```{r OU tables, eval = TRUE, echo = FALSE}
 options(width=100)
 taulevels <- c(0.1, 1, 5, 10, 20, 50, 100)
-OUsims <- readRDS(file = 'OUsims.RDS')
 cat('Density\n')
 cbind(tau = taulevels, round(estimateSummary(OUsims)[,-1],4))
 cat('lambda0\n')
@@ -214,7 +220,7 @@ cat('sigma\n')
 cbind(tau = taulevels, round(estimateSummary(OUsims, 'sigma')[,-1],4))
 ```
 
-```{r OUfigures, echo = FALSE, fig.height = 3, fig.width=8, out.width="90%", fig.cap = "Figure: Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for null-model density estimates from Ornstein-Uhlenbeck model with autocorrelation parameter $\tau$."}
+```{r OUfigures, eval = figures, echo = FALSE, fig.height = 3, fig.width=8, out.width="90%", fig.cap = "Figure: Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for null-model density estimates from Ornstein-Uhlenbeck model with autocorrelation parameter $\tau$."}
 OUsims <- readRDS(file = 'OUsims.RDS')
 estD <- estimateSummary(OUsims)[,-1]
 estS <- estimateSummary(OUsims, 'sigma')[,-1]

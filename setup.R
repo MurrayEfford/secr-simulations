@@ -1,13 +1,15 @@
 ## Setup code for all secr-simulations
-## 2024-03-29, 2024-04-13
+## 2024-03-29, 2024-04-13, 2024-06-13
 
 ## To use
 ## -- install packages secrdesign and RColorBrewer from CRAN
 ## -- edit the call to setNumThreads as required
+## -- consider setting options(nrepl) externally
 ## -- knit rmarkdown file including source('setup.R') and simulation code
 
+
 library(secrdesign)
-nc <- setNumThreads(18)
+nc <- setNumThreads(min(RcppParallel::defaultNumThreads(), 40))
 options(digits = 5)      # for more readable output
 options(width = 100)
 
@@ -65,12 +67,17 @@ countlegend <- function (rows = -5) {
 
 metadata <- function(runsim) {
     if (runsim) {
+        # expect that internal code in calling function has retrieved options(nrepl) as nrepl
+        nr1 <- if (exists("nrepl"))  paste0('nrepl      ', nrepl, '\n') else ''
+        nr2 <- if (exists("nrepl2")) paste0('nrepl2     ', nrepl2, '\n') else ''
         md <- paste0( R.version.string, '\n',
                     'Platform   ', sessionInfo()$platform, '\n',
                     'Running    ', sessionInfo()$running, '\n',
                     'secr       ', packageVersion('secr'), ' ',  packageDate('secr'), '\n',
                     'secrdesign ', packageVersion('secrdesign'), ' ',  packageDate('secr'), '\n',
-                    'run        ', date(), '\n')
+                    'Threads    ', setNumThreads(), '\n',
+                    nr1, nr2,
+                    'Run        ', date(), '\n')
         saveRDS(md, file = 'metadata.RDS')
     }
     else {

@@ -44,9 +44,12 @@ The same conditions used for simulation and fitting.
 
 ## Package version, date and platform
 
-```{r versions, results = 'hold', echo = FALSE}
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim <- TRUE
+runsim  <- FALSE
+figures <- TRUE
+cache   <- TRUE
+nrepl   <- 100
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
@@ -110,9 +113,9 @@ scenarioSummary(scen, grid)
 
 ### Run Mh simulations
 
-```{r Mh-run, eval = runsim, warning = FALSE}
+```{r Mh-run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
 Mhsims <- run.scenarios(
-    nrepl     = 500, 
+    nrepl     = nrepl, 
     scenarios = scen, 
     trapset   = grid, 
     fit       = TRUE, 
@@ -125,11 +128,16 @@ Mhsims <- run.scenarios(
 saveRDS(Mhsims, file = 'Mhsims.RDS')
 ```
 
+```{r Mh readRDS, echo = FALSE}
+Mhsims <- readRDS(file = 'Mhsims.RDS')
+```
+
+Mhsims completed with `r nrepl` replicates on `r nc` threads in `r round(Mhsims$proctime/60,1)` minutes.
+
 ## Results
 
 First check the mean sample sizes for each scenario
 ```{r Mhdatasummary, eval = TRUE, echo = FALSE}
-Mhsims <- readRDS(file = 'Mhsims.RDS')
 counts <- t(sapply(Mhsims$output, function(x) apply(sapply(x, attr, 'counts'),1,mean)))
 cvlevels <- header(Mhsims)$pop.args[,5:6]
 cbind(cvlevels, counts[,1:4])
@@ -149,7 +157,7 @@ cat('sigma\n')
 cbind(cvlevels, estS)
 ```
  
-```{r Mh figure, eval = TRUE, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given individual variation" }
+```{r Mh figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given individual variation" }
 Mhsims <- readRDS(file = 'Mhsims.RDS')
 estD <- estimateSummary(Mhsims)[,-1]
 estL <- estimateSummary(Mhsims, 'lambda0')[,-1]
@@ -184,7 +192,7 @@ Estimates of density from the null model are moderately sensitive to individual 
 
 Run this code to obtain results for a single scenario (here CV(lambda0) = 0.6). Here we fit both a null model (lambda0~1) and a 2-class finite mixture model (lambda0~h2). The mixture model performed well in terms of bias (-0.4\%) and confidence interval coverage (93\%), with two caveats: not all datasets yielded estimates, and the precision of the estimates was greatly reduced (relative standard error increased from 0.11 to 0.30).
 
-```{r Mh oneoff, eval = TRUE, cache = TRUE, warning = FALSE, message = FALSE}
+```{r Mh oneoff, eval = FALSE, cache = TRUE, warning = FALSE, message = FALSE}
 source('../setup.R')
 grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
 poparg <- list(covariates = popn.covariates, lambda0 = 0.1, sigma = 20, CVlambda0 = 0.6, CVsigma2 = 0)

@@ -29,7 +29,7 @@ Effect of non-closure due to *in situ* births and deaths on density estimated by
 
 Square grid of 64 binary proximity detectors at 3000-m spacing.  
 
-The same conditions used for simulation and fitting. 
+The same conditions were used for simulation and fitting. 
 Weekly 'sessions' were joined in `run.scenarios` for the final single-session analysis.
 
 | Parameter | Value(s) |
@@ -45,25 +45,26 @@ Weekly 'sessions' were joined in `run.scenarios` for the final single-session an
 
 ## Package version, date and platform
 
-```{r versions, results = 'hold', echo = FALSE}
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim <- TRUE
+runsim  <- FALSE
+figures <- TRUE
+cache   <- TRUE
+nrepl   <- 1000
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
 ## Simulation code
 
 ```{r CLO initial, eval = TRUE, message = FALSE, results = "hide"}
-source('../setup.R')
-nrepl  <- 1000
-nocc   <- seq(4,24,4)
+nsess  <- seq(4,24,4)
 phi    <- c(0.5,0.75, 1.0)
 phiw   <- exp(log(phi)/52)   # convert annual to weekly survival
 grid   <- make.grid(nx = 8, ny = 8, spacing = 3000, detector = "proximity")
 poparg <- expand.arg(
     buffer     = 10000, 
     D          = 0.001, 
-    noccasions = nocc, 
+    nsessions  = nsess, 
     lambda     = 1, 
     phi        = phiw, 
     sublist = list(details=c('lambda','phi')))
@@ -77,39 +78,42 @@ scen <- make.scenarios(D = 0.001, noccasions = 1, detectfn = 'HHN', lambda0 = 0.
                         sigma = 2000, popindex=1:length(poparg))
 ```
 
-```{r CLO code1, eval = runsim, warning = FALSE}
-CLOcounts <- run.scenarios(nrepl = nrepl, scen, trapset = grid, pop.args = poparg, 
-                           det.args = detarg, joinsessions = TRUE, seed = 12345)
-
-CLOsims <- run.scenarios(nrepl = nrepl, scen, trapset = list(grid), pop.args = poparg, 
-                         det.args = detarg, joinsessions = TRUE, fit = TRUE, 
-                         fit.args = fitarg, seed = 12345)
-
-saveRDS(CLOcounts, file = 'CLOcounts.RDS')
+```{r CLO code1, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+CLOsims <- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen, 
+    trapset   = list(grid), 
+    pop.args  = poparg,
+    det.args  = detarg, 
+    joinsessions = TRUE, 
+    fit       = TRUE, 
+    fit.args  = fitarg, 
+    seed      = 12345)
 saveRDS(CLOsims, file = 'CLOsims.RDS')
 ```
 
 ## Results
 
 ```{r CLO results1, echo = FALSE} 
-CLOcounts <- readRDS('CLOcounts.RDS')
 CLOsims <- readRDS('CLOsims.RDS')
-# header(CLOsims)
-outraw  <- summary(CLOcounts)$OUTPUT
+```
+
+CLOsims completed with `r nrepl` replicates in `r round(CLOsims$proctime/60,1)` minutes.
+
+```{r CLO results2, echo = FALSE} 
+outraw  <- getcounts(CLOsims)
 out  <- summary(CLOsims)$OUTPUT
 Dhat <- sapply(out, '[', 'estimate','mean')
 RB   <- sapply(out, '[', 'RB','mean')
 RSE  <- sapply(out, '[', 'RSE','mean')
 COV  <- sapply(out, '[', 'COV','mean')
-n <- sapply(outraw, '[', 'n','mean')
-r <- sapply(outraw, '[', 'r','mean')
-m <- sapply(outraw, '[', 'nmov','mean')
+n <- outraw[,'n']
+r <- outraw[,'r']
+m <- outraw[,'nmov']
 ```
 
-Runtime for `r CLOsims$nrepl` replicates using `r nc` cores was `r round(CLOsims$proctime/60)` minutes.
-
 ```{r CLO tables1, echo = FALSE}
-data.frame(Days = nocc*7, Survival = phiw^52, n=n, r=r, m=m, RB=RB, RSE=RSE, COV = COV)
+data.frame(Days = nsess*7, Survival = phiw^52, n=n, r=r, m=m, RB=RB, RSE=RSE, COV = COV)
 ```
 
 Fitting a linear regression to RB as a function of duration we get:
@@ -117,36 +121,36 @@ Fitting a linear regression to RB as a function of duration we get:
 phi0 <- 1:6
 phi1 <- 7:12
 phi2 <- 13:18
-model0 <- lm(I(RB[phi0]) ~ I(nocc*7))
-model1 <- lm(I(RB[phi1]) ~ I(nocc*7))
-model2 <- lm(I(RB[phi2]) ~ I(nocc*7))
+model0 <- lm(I(RB[phi0]) ~ I(nsess*7))
+model1 <- lm(I(RB[phi1]) ~ I(nsess*7))
+model2 <- lm(I(RB[phi2]) ~ I(nsess*7))
 df <- data.frame(phi, rbind(coef(model0), coef(model1), coef(model2)))
 names(df) <- c('survival', 'intercept', 'slope')
 df$dailymort <- 1 - phi^(1/365)
 df$ratio <- df$slope / df$daily
 ```
 
-```{r CLO figures1, echo = FALSE, fig.height = 3, fig.width=7, out.width="100%", fig.cap = "Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for density estimates from studies of varying duration. Annual survival 50% (open circles), 75% (filled circles) or 100% (triangles). Horizontal lines for reference only."}
+```{r CLO figures1, eval = figures, echo = FALSE, fig.height = 3, fig.width=7, out.width="100%", fig.cap = "Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for density estimates from studies of varying duration. Annual survival 50% (open circles), 75% (filled circles) or 100% (triangles). Horizontal lines for reference only."}
 par(mfrow=c(1,3), mar=c(3,4,1,1), pty='s')
 plot(0,0,type='n', ylim=c(-0.05,0.3), xlim=c(0,365/2), xlab = 'Duration (days)', ylab='RB', xaxs = 'i')
 abline(model0, col='grey')
 abline(model1, col='grey')
 abline(model2)
-points(nocc*7, RB[phi0])
-points(nocc*7, RB[phi1], pch = 16)
-points(nocc*7, RB[phi2], pch = 2)
+points(nsess*7, RB[phi0])
+points(nsess*7, RB[phi1], pch = 16)
+points(nsess*7, RB[phi2], pch = 2)
 abline(h=0, lty=2, col='grey')
 
 plot(0,0,type='n',ylim=c(0,0.3), xlim=c(0,365/2), xlab = 'Duration (days)', ylab='RSE', xaxs = 'i')
-points (nocc*7, RSE[phi0])
-points (nocc*7, RSE[phi1], pch=16)
-points(nocc*7, RSE[phi2], pch = 2)
+points (nsess*7, RSE[phi0])
+points (nsess*7, RSE[phi1], pch=16)
+points(nsess*7, RSE[phi2], pch = 2)
 abline(h=0.1, col='grey')
 
 plot(0,0,type='n',ylim=c(0,1), xlim=c(0,365/2), xlab = 'Duration (days)', ylab='COV', xaxs = 'i')
-points(nocc*7, COV[phi0])
-points(nocc*7, COV[phi1], pch = 16)
-points(nocc*7, COV[phi2], pch = 2)
+points(nsess*7, COV[phi0])
+points(nsess*7, COV[phi1], pch = 16)
+points(nsess*7, COV[phi2], pch = 2)
 abline(h=0.95, lty=2, col='grey')
 ```
 

@@ -11,7 +11,7 @@
 
 <meta name="author" content="Murray Efford" />
 
-<meta name="date" content="2024-03-29" />
+<meta name="date" content="2024-06-14" />
 
 <title>secr closure simulations</title>
 
@@ -359,7 +359,7 @@ display: none;
 <h1 class="title toc-ignore"><strong>secr</strong> closure
 simulations</h1>
 <h4 class="author">Murray Efford</h4>
-<h4 class="date">2024-03-29</h4>
+<h4 class="date">2024-06-14</h4>
 
 </div>
 
@@ -395,7 +395,7 @@ centres fixed.</p>
 <div id="settings" class="section level2">
 <h2>Settings</h2>
 <p>Square grid of 64 binary proximity detectors at 3000-m spacing.</p>
-<p>The same conditions used for simulation and fitting. Weekly
+<p>The same conditions were used for simulation and fitting. Weekly
 ‘sessions’ were joined in <code>run.scenarios</code> for the final
 single-session analysis.</p>
 <table>
@@ -443,24 +443,31 @@ single-session analysis.</p>
 </div>
 <div id="package-version-date-and-platform" class="section level2">
 <h2>Package version, date and platform</h2>
-<p><strong>secr</strong> 4.6.6<br />
-<strong>secrdesign</strong> 2.9.0</p>
-<p>Run on Matrix 2024-03-01:</p>
-<p>R version 4.3.0 (2023-04-21)<br />
-Platform: x86_64-pc-linux-gnu (64-bit)</p>
+<pre class="r"><code>source(&#39;../setup.R&#39;)
+runsim  &lt;- FALSE
+figures &lt;- TRUE
+cache   &lt;- TRUE
+nrepl   &lt;- 1000
+metadata(runsim) # if FALSE picks up saved metadata.RDS</code></pre>
+<pre><code>## R version 4.3.2 (2023-10-31)
+## Platform   x86_64-pc-linux-gnu (64-bit)
+## Running    CentOS Linux 7 (Core)
+## secr       4.6.7 2024-05-18
+## secrdesign 2.9.1 2024-05-18
+## Threads    40
+## nrepl      1000
+## Run        Thu Jun 13 09:31:22 2024</code></pre>
 </div>
 <div id="simulation-code" class="section level2">
 <h2>Simulation code</h2>
-<pre class="r"><code>source(&#39;../setup.R&#39;)
-nrepl  &lt;- 1000
-nocc   &lt;- seq(4,24,4)
+<pre class="r"><code>nsess  &lt;- seq(4,24,4)
 phi    &lt;- c(0.5,0.75, 1.0)
 phiw   &lt;- exp(log(phi)/52)   # convert annual to weekly survival
 grid   &lt;- make.grid(nx = 8, ny = 8, spacing = 3000, detector = &quot;proximity&quot;)
 poparg &lt;- expand.arg(
     buffer     = 10000, 
     D          = 0.001, 
-    noccasions = nocc, 
+    nsessions  = nsess, 
     lambda     = 1, 
     phi        = phiw, 
     sublist = list(details=c(&#39;lambda&#39;,&#39;phi&#39;)))
@@ -472,38 +479,40 @@ fitarg &lt;- list(mask = make.mask(grid, buffer = 10000, type = &#39;trapbuffer&
 
 scen &lt;- make.scenarios(D = 0.001, noccasions = 1, detectfn = &#39;HHN&#39;, lambda0 = 0.2, 
                         sigma = 2000, popindex=1:length(poparg))</code></pre>
-<pre class="r"><code>CLOcounts &lt;- run.scenarios(nrepl = nrepl, scen, trapset = grid, pop.args = poparg, 
-                           det.args = detarg, joinsessions = TRUE, seed = 12345)
-
-CLOsims &lt;- run.scenarios(nrepl = nrepl, scen, trapset = list(grid), pop.args = poparg, 
-                         det.args = detarg, joinsessions = TRUE, fit = TRUE, 
-                         fit.args = fitarg, seed = 12345)
-
-saveRDS(CLOcounts, file = &#39;CLOcounts.RDS&#39;)
+<pre class="r"><code>CLOsims &lt;- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen, 
+    trapset   = list(grid), 
+    pop.args  = poparg,
+    det.args  = detarg, 
+    joinsessions = TRUE, 
+    fit       = TRUE, 
+    fit.args  = fitarg, 
+    seed      = 12345)
 saveRDS(CLOsims, file = &#39;CLOsims.RDS&#39;)</code></pre>
 </div>
 <div id="results" class="section level2">
 <h2>Results</h2>
-<p>Runtime for 1000 replicates using 18 cores was 680 minutes.</p>
+<p>CLOsims completed with 1000 replicates in 1072.5 minutes.</p>
 <pre><code>##    Days Survival       n       r       m       RB     RSE   COV
-## 1    28     0.50  61.422  60.888  51.768  0.03910 0.14007 0.941
-## 2    56     0.75  77.279 166.620 138.009  0.05522 0.11702 0.909
-## 3    84     1.00  86.263 281.748 231.431  0.09833 0.10970 0.824
-## 4   112     0.50  93.060 394.204 321.689  0.14266 0.10515 0.724
-## 5   140     0.75  99.279 509.538 413.945  0.17819 0.10200 0.609
-## 6   168     1.00 105.598 627.051 508.512  0.23447 0.09856 0.450
-## 7    28     0.50  60.253  61.541  52.253  0.02115 0.14102 0.940
-## 8    56     0.75  75.855 170.047 140.795  0.02230 0.11831 0.934
-## 9    84     1.00  82.794 285.488 234.057  0.03747 0.11227 0.932
-## 10  112     0.50  87.348 402.322 327.568  0.06201 0.10846 0.895
-## 11  140     0.75  91.567 520.957 422.796  0.07748 0.10603 0.877
-## 12  168     1.00  94.863 637.305 516.495  0.09701 0.10383 0.826
-## 13   28     0.50  59.949  61.624  52.295  0.01022 0.14071 0.945
-## 14   56     0.75  74.131 171.383 141.616 -0.00156 0.11934 0.950
-## 15   84     1.00  80.272 288.486 236.581  0.00089 0.11400 0.936
-## 16  112     0.50  83.255 408.919 332.766  0.00237 0.11122 0.957
-## 17  140     0.75  85.641 528.745 428.864 -0.00268 0.10971 0.962
-## 18  168     1.00  87.186 647.316 524.459 -0.00479 0.10852 0.951</code></pre>
+## 1    28     0.50  61.645  61.856  46.326  0.03910 0.14007 0.941
+## 2    56     0.75  77.229 166.870 106.588  0.05522 0.11702 0.909
+## 3    84     1.00  86.351 281.802 158.297  0.09833 0.10970 0.824
+## 4   112     0.50  93.496 395.520 199.484  0.14266 0.10515 0.724
+## 5   140     0.75  99.008 509.130 233.716  0.17819 0.10200 0.609
+## 6   168     1.00 105.826 630.074 267.434  0.23447 0.09856 0.450
+## 7    28     0.50  60.669  61.492  45.979  0.02115 0.14102 0.940
+## 8    56     0.75  75.359 169.604 107.942  0.02230 0.11831 0.934
+## 9    84     1.00  82.332 284.158 158.242  0.03747 0.11227 0.932
+## 10  112     0.50  87.747 404.166 199.552  0.06201 0.10846 0.895
+## 11  140     0.75  91.485 520.745 232.706  0.07748 0.10603 0.877
+## 12  168     1.00  95.203 644.586 263.952  0.09701 0.10383 0.826
+## 13   28     0.50  60.537  62.406  46.823  0.01022 0.14071 0.945
+## 14   56     0.75  73.924 170.774 108.022 -0.00156 0.11934 0.950
+## 15   84     1.00  79.845 288.447 158.852  0.00089 0.11400 0.936
+## 16  112     0.50  83.335 407.756 198.418  0.00237 0.11122 0.957
+## 17  140     0.75  85.350 525.782 230.319 -0.00268 0.10971 0.962
+## 18  168     1.00  87.135 643.608 256.991 -0.00479 0.10852 0.951</code></pre>
 <p>Fitting a linear regression to RB as a function of duration we
 get:</p>
 <div class="figure">
@@ -538,8 +547,7 @@ trend.</p>
 <h2>One-off</h2>
 <p>Run this code to obtain results for a single scenario. Requires
 secrdesign <span class="math inline">\(\ge\)</span> 2.9.0.</p>
-<pre class="r"><code>library(secrdesign)
-setNumThreads(18)
+<pre class="r"><code>source(&#39;../setup.R&#39;)
 nsess  &lt;- 12  # weeks
 phi    &lt;- 0.5  # annual survival
 phiw   &lt;- exp(log(phi)/52)   # convert annual to weekly survival

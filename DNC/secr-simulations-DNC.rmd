@@ -44,16 +44,18 @@ Weekly 'sessions' were joined in `run.scenarios` for the final single-session an
 
 ## Package version, date and platform
 
-```{r versions, results = 'hold', echo = FALSE}
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim <- TRUE
+runsim  <- FALSE
+figures <- TRUE
+nrepl   <- 500
+cache   <- TRUE
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
 ## Simulation code
 
 ```{r DNC initial, eval = TRUE, message = FALSE, results = "hide"}
-source('../setup.R')
 grid <- make.grid(nx = 8, ny = 8, spacing = 3000, detector = "proximity")
 moves <- c(0, 250, 500, 750, 1000)
 nmove <- length(moves)
@@ -75,17 +77,29 @@ scen <- make.scenarios(D = 0.001, noccasions = 1, detectfn = 'HHN', lambda0 = 0.
                         sigma = 2000, popindex=1:length(moves))
 ```
 
-```{r DNC code1, eval = runsim, warning = FALSE}
-DNCsims <- run.scenarios(nrepl = 500, scen, trapset = grid, pop.args = popargs, 
-                         det.args = detarg, joinsessions = TRUE, fit = TRUE, 
-                         fit.args = fitarg, seed = 12345)
+```{r DNC code1, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+DNCsims <- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen, 
+    trapset   = grid, 
+    pop.args  = poparg, 
+    det.args  = detarg, 
+    joinsessions = TRUE, 
+    fit       = TRUE, 
+    fit.args  = fitarg, 
+    seed      = 12345)
 saveRDS(DNCsims, file = 'DNCsims.RDS')
 ```
 
 ## Results
 
-```{r DNC results1, echo = FALSE, results = "hold"} 
+```{r DNC results1, echo = FALSE} 
 DNCsims <- readRDS('DNCsims.RDS')
+```
+
+DNCsims completed with `r nrepl` replicates on `r nc` threads in `r round(DNCsims$proctime/60,1)` minutes.
+
+```{r DNC results2, echo = FALSE, results = "hold"} 
 # header(DNCsims)
 estD <- estimateSummary(DNCsims)
 estL <- estimateSummary(DNCsims, 'lambda0')
@@ -95,9 +109,7 @@ cbind(move.a = moves, counts[,1:4])
 countlegend(-(5:6))
 ```
 
-Runtime for `r DNCsims$nrepl` replicates using 24 cores was `r round(DNCsims$proctime/60)` minutes.
-
-```{r DNCfigure, echo = FALSE, fig.height = 5, fig.width=5, out.width="60%", fig.cap = "Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for density estimates from studies of varying random movement of AC. Annual survival 50% (open circles), 75% (filled circles) or 100% (triangles). Horizontal lines for reference only."}
+```{r DNCfigure, eval = figures, echo = FALSE, fig.height = 5, fig.width=5, out.width="60%", fig.cap = "Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for density estimates from studies of varying random movement of AC. Annual survival 50% (open circles), 75% (filled circles) or 100% (triangles). Horizontal lines for reference only."}
 leg <- c('D','lambda0','sigma')
 par(mfrow = c(1,1), mar = c(5,4,2,2), mgp=c(2.4,0.7,0), pty = 's', xpd = FALSE)
 plot(0,0, type = 'n', ylim = c(-1, 1.2), xlim = c(0,1000), 

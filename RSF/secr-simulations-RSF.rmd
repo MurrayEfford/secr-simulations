@@ -1,0 +1,478 @@
+---
+title: "**secr** simulations RSF"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Spatially autocorrelated random effects RSF and SARE
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+Unmodelled spatial variation in the probability of detection is a potential cause of bias in density estimates from null-model SECR. There are subtleties here: we may be talking about either
+
+1. The probability of detecting an animal at any detector, given its AC, or
+2. The probability that a detector will detect an animal given its presence in the vicinity
+
+The second involves a property of the detector that may vary independently of other detectors or in a spatially autocorrelated fashion (hence 'spatially autocorrelated random effects' or SARE
+following Dey et al. (2023)). Several papers have simulated detector variation as resulting from a Gaussian random field. The field is defined across continuous space, but evaluated only at the detector locations, for which the variation is multivariate normal (MVN). Spatial autocorelation is determined by the covariance function (usually exponential) and its spatial scale. Distances between detectors are multiplied by the covariance spatial scale parameter for which we use the symbol $\phi$.
+
+The cases identified by Dey et al. (2023:3) are: 
+
+| Case | Label | Interpretation |
+|:---------|:---------------------|:-----------------|
+| $\phi = 0$ | SCR | no heterogeneity, detectors identical |
+| $0 < \phi < \infty$ | SARE| spatially autocorrelated random effect|
+| $\phi \to \infty$ | RE| independent random effect each detector RE |
+
+A cumulative effect of detector-level variation (2) is to drive differences in detection probability among animals (1). This is because an AC is likely to be exposed to a unique set of nearby detectors. Detector variation may bias density estimates from a null model purely because of this individual heterogeneity, although we will see that this is hard to pin down.
+
+Here we reproduce selected RSF simulations from the paper of Royle et al. (2013). The RSF model is unrealistic as a model of animal activity as it posits potentially large variation among individuals in total activity. It is biologically more realistic to normalise activity using an integral of the underlying Gaussian random field (Efford 2014), and we include some relevant simulations.
+
+The SARE simulations of Moqanaki et al. (2021) and Dey et al. (2023) are treated in a separate Rmarkdown document secr-simulations-SARE.rmd. That document also compares parameterisations of the GRF and mentions extensions. 
+
+## Package version, date and platform
+
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
+source('../setup.R')   # sets options(nrepl,nrepl2)
+source('../Moran.R')
+runsim  <- FALSE
+cache   <- TRUE
+figures <- TRUE
+nrepl   <- 100
+nrepl2  <- 500
+metadata(runsim)       # if FALSE picks up saved metadata.RDS
+library(mvtnorm)
+library(raster)
+library(RandomFields)
+```
+
+# Royle et al. 2013 RSF
+
+## Alternative capthist simulator
+```{r RSFfn, echo = TRUE, eval = TRUE}
+simRSF.capthist <- function (traps, popn, detectfn, detectpar, noccasions = 10, 
+                             alpha2 = 1, scale = 1, ...)
+{
+    if (!(detectfn == 14 || detectfn == "HHN")) stop ("detectfn not implemented")
+    K <- nrow(traps)
+    cov <- exp(-edist(traps,traps)/scale)     
+    X <- mvtnorm::rmvnorm(1, mean = rep(0, K), sigma = cov) 
+    alpha0 <- log(detectpar$lambda0)
+    lambda0 <- exp(alpha0 + alpha2 * X)       # length K vector
+    # lambda0 input to sim.capthist is matrix noccasions x ndetectors
+    detectpar$lambda0 <- matrix(lambda0, byrow = TRUE, nrow = noccasions, ncol = K)
+    covariates(traps) <- data.frame(X = as.numeric(X))
+    ch <- sim.capthist(traps, popn, detectfn, detectpar, noccasions)
+    attr(ch, 'X') <- X
+    attr(ch, 'lambda0') <- lambda0
+    ch
+}
+```
+
+```{r RSF scenarios, message = FALSE}
+grid49 <- make.grid(7,7, spacing = 5, detector = 'proximity')
+mask49 <- make.mask(grid49, buffer = 8)
+poparg <- list(Ndist = 'fixed')
+detarg <- expand.arg(alpha2        = 1.0,  # coefficient of random effect
+                     scale         = 5)    # scale of covariance
+fitarg <- list(list(model    = lambda0~1, 
+                    detectfn = 'HHN', 
+                    details  = list(distribution = 'binomial')),
+               list(model    = lambda0~X, 
+                    detectfn = 'HHN', 
+                    details  = list(distribution = 'binomial')))
+scen <- make.scenarios(noccasions = 10, 
+                       D          = c(100,200)/maskarea(mask49),     
+                       lambda0    = exp(-2),   # exp(alpha0) 
+                       sigma      = 2, 
+                       detectfn   = 'HHN', 
+                       detindex   = 1:length(detarg),
+                       fitindex   = 1:2)
+```
+
+```{r RSF scenario summary, cache = TRUE, warning = FALSE}
+scenarioSummary(scen, trapset = grid49)
+```
+
+```{r RSF run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+RSFsims <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen, 
+    trapset     = grid49, 
+    maskset     = mask49, 
+    CH.function = "simRSF.capthist", 
+    fit         = TRUE, 
+    pop.args    = poparg, 
+    det.args    = detarg, 
+    fit.args    = fitarg)
+saveRDS(RSFsims, file = 'RSFsims.RDS')
+```
+
+
+## Results
+
+```{r load RSFsims, echo = FALSE}
+RSFsims <- readRDS(file = 'RSFsims.RDS')
+```
+
+RSFsims completed with `r nrepl` replicates in `r round(RSFsims$proctime/60,1)` minutes.
+
+First confirm simulated counts of individuals $n$ and recaptures $r$ are reasonable:
+```{r RSF counts}
+getcounts(RSFsims)  # requires secrdesign 2.9.1
+```
+
+And confirm bias in $\hat D$ from null model (scenarios 1,2) disappears when the trap covariate is included in the model (scenarios 3,4):
+```{r RFS summary}
+estimateSummary(RSFsims)
+```
+
+## Extend to a range of values for $\alpha_2$
+
+We simulate only the lower density ($N = 100$) and fit only the null model. Values of $\alpha_0$, scale and poparg are as before.
+
+```{r RSF scenarios2}
+detarg <- expand.arg(alpha2        = seq(0,1.4,0.2), 
+                     scale         = 5)
+scen <- make.scenarios(noccasions = 10, 
+                       D          = 100/maskarea(mask49),     
+                       lambda0    = exp(-2), 
+                       sigma      = 2, 
+                       detectfn   = 'HHN', 
+                       detindex   = 1:length(detarg),
+                       fitindex   = 1)  # null model only
+```
+
+```{r RSF run 2, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+RSFsims2 <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen, 
+    trapset     = grid49, 
+    maskset     = mask49, 
+    CH.function = "simRSF.capthist", 
+    fit         = TRUE, 
+    pop.args    = poparg, 
+    det.args    = detarg, 
+    fit.args    = fitarg)
+saveRDS(RSFsims2, file = 'RSFsims2.RDS')
+```
+
+```{r RSF scenarios2X, eval = figures, echo = FALSE, cache = cache, warning = FALSE, message = FALSE}
+RSFsims2X <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen, 
+    trapset     = grid49, 
+    maskset     = mask49, 
+    CH.function = "simRSF.capthist", 
+    fit         = FALSE, 
+    pop.args    = poparg, 
+    det.args    = detarg, 
+    extractfn   = MoranX)
+tmp <- MoranXSummary(RSFsims2X)
+tmpdnpa <- MoranXSummary(RSFsims2X, 'dnpa')
+par(mar=c(4,4,4,4))
+plot(0,0,type='n',xlim=c(0,1.4), ylim=c(0,4), xlab='alpha2',ylab='RPSV')
+addRB(seq(0,1.4,0.2), tmp, 'mean','se')
+addRB(seq(0,1.4,0.2), tmpdnpa, 'mean','se', pch = 16)
+mtext(side=4, 'Detections per animal', adj=0.7)
+```
+
+## Results of extended simulation
+
+```{r load RSFsims2, echo = FALSE}
+RSFsims2 <- readRDS(file = 'RSFsims2.RDS')
+```
+
+RSFsims2 completed with `r nrepl` replicates in `r round(RSFsims2$proctime/60,1)` minutes.
+
+```{r RSF 2 results, eval = TRUE, cache = TRUE}
+estD <- estimateSummary(RSFsims2, 'D')
+estL <- estimateSummary(RSFsims2, 'lambda0')
+estS <- estimateSummary(RSFsims2, 'sigma')
+cbind(alpha2 = seq(0,1.4,0.2), getcounts(RSFsims2)[,-5])
+```
+
+The number of recaptures increases radically with $\alpha_2$, but from the more gradual increase in dpa (detectors per animal) we infer this is due to repeat detections at favoured detectors. 
+
+```{r RSF 2 figure, eval = figures, cache = TRUE}
+leg <- c('D', 'lambda0','sigma')
+alpha2 <- seq(0,1.4,0.2)
+par(mfrow=c(1,1), mar=c(5,4,2,2), mgp=c(2.4,0.7,0), pty='s', bty = 'o')
+plot(1,1, type = 'n', xlim=c(0,1.4), ylim=c(-0.4,0.6), xlab = 'alpha2', ylab = 'RB')
+abline(h=0, lty=2)
+addRB(alpha2, estL, pch=21, bg='white', star = 0.6)
+addRB(alpha2, estS, pch=24, bg='white', star = 0.6)
+addRB(alpha2, estD, pch=16)
+legend(0.02, -0.2, legend = leg, pch=c(16,21,24), cex=0.85)
+```
+
+## Effect of normalisation
+
+```{r RSFfn normalized, eval = TRUE, echo = FALSE, message = FALSE}
+simRSFn.capthist <- function (traps, popn, detectfn, detectpar, noccasions = 10, 
+                             alpha2 = 1, scale = 1, normalize = TRUE, ...)
+{
+    if (!(detectfn == 14 || detectfn == "HHN")) stop ("detectfn not implemented")
+    K <- nrow(traps)
+    N <- nrow(popn)
+    msk <- make.mask(traps, buffer = 8 * detectpar$sigma)
+    M <- nrow(msk)
+    alpha0 <- log(detectpar$lambda0)
+    alpha1 <- -1 / (2*detectpar$sigma^2)
+    
+    # generate instance of random field
+    if (!(requireNamespace("RandomFields"))) stop("install RandomFields")
+    model <- RandomFields::RMexp(var = 1, scale = scale) + RandomFields::RMtrend(mean = 0)
+    covariates(msk)$X <- RandomFields::RFsimulate(model, x = as.matrix(msk))@data[,1]
+    traps <- addCovariates(traps, msk)
+    
+    # field value at detectors...
+    Zmat <- matrix(covariates(traps)$X, nrow = N, ncol = K, byrow = TRUE)
+    
+    if (normalize) {
+        # adjust as per Efford 2014:600
+        alpha0 <- alpha0 + log(2*pi*detectpar$sigma^2)
+        
+        # field value at each mask point...
+        Xmat <- matrix(covariates(msk)$X, nrow = N, ncol = M, byrow = TRUE)
+        
+        # sum space use for each individual in population
+        dm <- secr::edist(popn, msk)             # N x M matrix
+        loglams <- alpha1 * dm^2  + alpha2 * Xmat
+        C <- apply(exp(loglams), 1, sum)   # N vector
+    }
+    else {
+        C <- 1
+    }
+    
+    # N x K matrix of detection probabilities
+    d <- secr::edist(popn, traps)
+    loglam <- alpha1 * d^2 + alpha2 * Zmat
+    p <- 1 - exp(- exp(alpha0 + loglam - log(C)))
+    
+    if (noccasions>1) {
+        # replicate occasions
+        p <- aperm(apply(p,1:2,rep,noccasions), c(2,1,3))
+    }
+    if (detector(traps)[1] == 'proximity') {
+        ch <- rbinom(N*K*noccasions, 1, p)
+    }
+    else if (detector(traps)[1] == 'count') {
+        ch <- rpois(N*K*noccasions, exp(alpha0 + loglam - log(C)))
+    }
+    else stop ("detector not proximity or count")
+    ch <- array(ch, dim=c(N,noccasions,K))
+    rownames(ch) <- 1:N
+    ch <- ch[apply(ch, 1, function(x) sum(x) > 0),,, drop = FALSE]
+    class(ch) <- 'capthist'
+    traps(ch) <- traps
+    ch
+}
+```
+
+```{r test, eval = figures, echo = FALSE, message = FALSE}
+grid49 <- make.grid(7,7, spacing = 5, detector = 'proximity')
+mask49 <- make.mask(grid49, buffer = 8)
+bigmask49 <- make.mask(grid49, buffer = 16)
+pop <- sim.popn(200/maskarea(mask49), grid49, Ndist = 'fixed', buffer = 8)
+ch <- simRSFn.capthist (grid49, pop, 'HHN', 
+                        list(lambda0 = exp(-2), sigma=2), noccasions = 10, 
+                             alpha2 = 1, scale = 5, normalize = TRUE)
+summary(ch)
+plot(ch, tracks = T, border = 2, rad = 0.5)
+RPSV(ch, CC=TRUE)
+```
+
+```{r RSF scenarios3, eval = runsim, message = FALSE}
+poparg <- list(Ndist = 'fixed')
+detarg <- expand.arg(alpha2        = seq(0,1.4,0.2), 
+                     scale         = 5,
+                     normalize     = c(TRUE, FALSE))
+fitarg <- list(model    = lambda0~1, 
+               detectfn = 'HHN', 
+               details  = list(distribution = 'binomial'))
+scen <- make.scenarios(noccasions = 10, 
+                       D          = 200/maskarea(mask49),     
+                       lambda0    = exp(-2), 
+                       sigma      = 2, 
+                       detectfn   = 'HHN', 
+                       detindex   = 1:length(detarg),
+                       fitindex   = 1)  # null model only
+```
+
+```{r RSF run 3, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+RSFsims3 <- run.scenarios(
+    nrepl       = nrepl2, 
+    scenarios   = scen, 
+    trapset     = grid49, 
+    maskset     = mask49, 
+    CH.function = "simRSFn.capthist", 
+    fit         = TRUE, 
+    pop.args    = poparg, 
+    det.args    = detarg, 
+    fit.args    = fitarg)
+saveRDS(RSFsims3, file = 'RSFsims3.RDS')
+```
+
+## Results of extended simulation with normalisation
+
+```{r load RSFsims3, echo = FALSE}
+RSFsims3 <- readRDS(file = 'RSFsims3.RDS')
+```
+
+RSFsims3 completed with `r nrepl` replicates in `r round(RSFsims3$proctime/60,1)` minutes.
+
+```{r RSF 3 results, eval = TRUE, cache = TRUE}
+RSFsims3 <- readRDS(file = 'RSFsims3.RDS')
+estD <- estimateSummary(RSFsims3, 'D')
+estL <- estimateSummary(RSFsims3, 'lambda0')
+estS <- estimateSummary(RSFsims3, 'sigma')
+cbind(alpha2 = seq(0,1.4,0.2), getcounts(RSFsims3)[,-5])
+```
+
+The number of recaptures increases radically with $\alpha_2$, but there is a much more gradual increase in dpa (detectors per animal) so we infer the increase in recaptures is due to repeat detections at favoured detectors. 
+
+```{r RSF 3 figure, eval = figures, cache = TRUE}
+leg <- c('D', 'lambda0','sigma')
+alpha2 <- seq(0,1.4,0.2)
+par(mfrow=c(1,2), mar=c(5,4,2,2), mgp=c(2.4,0.7,0), pty='s', bty = 'o')
+for (rw in 2:1) {
+    r <- (rw-1)*8+(1:8)
+    plot(1,1, type = 'n', xlim=c(0,1.4), ylim=c(-0.4,0.4), xlab = 'alpha2', ylab = 'RB')
+    abline(h=0, lty=2)
+    addRB(alpha2, estL[r,], pch=21, bg='white', star = 0.4)
+    addRB(alpha2, estS[r,], pch=24, bg='white', star = 0.4)
+    addRB(alpha2, estD[r,], pch=16)
+    legend(0.02, -0.2, legend = leg, pch=c(16,21,24), cex=0.85)
+    mtext(side=3, c('normalized','unnormalized')[rw])
+}
+```
+
+```{r RSF scenarios 4}
+grid49 <- make.grid(7,7, spacing = 5, detector = 'proximity')
+mask49 <- make.mask(grid49, buffer = 8)
+detarg <- expand.arg(alpha2        = seq(0,1.4,0.2), 
+                     scale         = c(1e-4,1e4))   # 1/phi
+fitarg <- list(model    = lambda0~1, 
+               detectfn = 'HHN', 
+               details  = list(distribution = 'binomial'))
+scen <- make.scenarios(noccasions = 10, 
+                       D          = 200/maskarea(mask49),     
+                       lambda0    = exp(-2), 
+                       sigma      = 2, 
+                       detectfn   = 'HHN', 
+                       detindex   = 1:length(detarg),
+                       fitindex   = 1)  # null model only
+```
+
+```{r RSF run 4, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+RSFsims4 <- run.scenarios(
+    nrepl       = nrepl2, 
+    scenarios   = scen, 
+    trapset     = grid49, 
+    maskset     = mask49, 
+    CH.function = "simRSF.capthist", 
+    fit         = TRUE, 
+    pop.args    = poparg, 
+    det.args    = detarg, 
+    fit.args    = fitarg)
+saveRDS(RSFsims4, file = 'RSFsims4.RDS')
+```
+
+```{r load RSFsims4, echo = FALSE}
+RSFsims4 <- readRDS(file = 'RSFsims4.RDS')
+```
+
+RSFsims4 completed with `r nrepl` replicates in `r round(RSFsims4$proctime/60,1)` minutes.
+
+
+```{r RSF 4 figure, eval = figures, cache = TRUE, fig.cap = "Relative bias of null-model density estimates under three scenarios for variation among detectors. 'phi' is the coefficient of the exponential covariance function (phi = 1/scale). Detectors are homogeneous (share the same value) when phi = 0, and independent as phi tends to infinity"}
+for (i in 1:16) for (j in nrepl:1) if (nrow(RSFsims4$output[[i]][[j]])==0) RSFsims4$output[[i]][[j]] <- NULL
+estD3 <- estimateSummary(RSFsims3, 'D')
+estD4 <- estimateSummary(RSFsims4, 'D', valid=c(0,5000))
+leg <- c('homogeneous', 'RSF','independent RE')
+alpha2 <- seq(0,1.4,0.2)
+par(mfrow=c(1,1), mar=c(5,4,2,2), mgp=c(2.4,0.7,0), pty='s', bty = 'o')
+plot(1,1, type = 'n', xlim=c(0,1.4), ylim=c(-0.4,0.4), xlab = 'alpha2', ylab = 'RB')
+abline(h=0, lty=2)
+addRB(alpha2, estD4[9:16,], pch=17)
+addRB(alpha2, estD3[9:16,], pch=16)
+addRB(alpha2, estD4[1:8,], pch=18)
+legend(0.02, -0.2, legend = leg, pch=c(17,16,18), cex=0.85)
+```
+
+```{r check, echo = FALSE, eval = FALSE}
+simRSFCV <- function (nrepl = nrepl, traps, mask, sigma = 2, noccasions = 10, 
+                      alpha0 = -2, alpha2 = 1, scale = 5, plt = 'CV')
+{
+    N <- nrow(mask)
+    K <- nrow(traps)
+    cov <- exp(-edist(traps,traps)/scale)  
+    base.er <- exp(-edist(mask, traps)^2/2/sigma^2)
+    one <- function (r) {
+        X <- mvtnorm::rmvnorm(1, mean = rep(0, K), sigma = cov) 
+        lambda0 <- exp(alpha0 + alpha2 * X)       # length K vector
+        h.mat <- sweep(base.er, MARGIN = 2, STATS = lambda0, FUN = '*') * noccasions
+        1 - exp(-apply(h.mat,1,sum))  # prob detected at least once
+    }
+    reps <- sapply(1:nrepl, one)
+    covariates(mask)$mean <- apply(reps,1,mean)
+    covariates(mask)$sd <- apply(reps,1,sd)
+    covariates(mask)$CV <- apply(reps,1,CV)
+    covariates(mask)$weighted <- covariates(mask)$sd / sum(covariates(mask)$mean)  * nrow(mask)
+    if (plt != '') {
+        plot(mask, cov=plt, dots=F, border = 10)
+        plot(traps, add=TRUE)
+    }
+    list (weighted = sum(covariates(mask)$sd) / sum(covariates(mask)$mean),
+          mask = mask)
+    # maskzone <- covariates(mask)$maskzone
+    # data.frame(CVa = CV(apply(reps,2,sum)),
+    #            zone = levels(maskzone),
+    #            mean = tapply(covariates(mask)$mean, maskzone, mean),
+    #            CV = tapply(covariates(mask)$CV, maskzone, mean))
+}
+
+msk <- make.mask(grid49, buffer = 12)
+dtt <- distancetotrap(msk, grid49)
+covariates(msk)$maskzone <- cut(dtt, c(0,4,6,8,10,20))
+plot(msk, cov='maskzone', dots=F)
+plot(grid49, add=T)
+
+alpha2val <- seq(0,1.4,0.2)
+mncv <- lapply(alpha2val, simRSFCV, nrepl = 1000, traps = grid49, mask = msk,
+               sigma = 2, noccasions = 10, alpha0 = -2, scale = 5)
+
+par(mfrow=c(1,1), mar=c(4,4,2,2))
+plot(0,0,xlim=c(0,12),ylim=c(0,2.2), type='n',xlab='Zone', ylab='CV(pdot)')
+lapply(mncv, function(x) points(c(2,5,7,9,11), x[,'CV'], type='o', pch=16))
+points(c(2,5,7,9,11), mncv[[1]][,'mean'], type='o', pch=1)
+points(c(2,5,7,9,11), mncv[[6]][,'mean'], type='o', pch=1)
+
+# Global CV over all x
+RSFsims2 <- readRDS(file = 'RSFsims2.RDS')
+estD <- estimateSummary(RSFsims2, 'D')
+
+plot(sapply(mncv, '[[', 'weighted'), estD$RB)
+
+plot(mncv[[8]]$mask, cov='weighted', dots=F)
+     
+     lnorm <- function (meanlog, sdlog) {
+    mean <- exp(meanlog + sdlog^2/2)
+    sd <- sqrt((exp(sdlog^2) - 1) * exp(2 * meanlog + sdlog^2))
+    c(mean = mean, sd = sd, cv = sd/mean)
+}
+sapply(seq(0,1.4,0.2), lnorm, meanlog = -2)   # checked
+```

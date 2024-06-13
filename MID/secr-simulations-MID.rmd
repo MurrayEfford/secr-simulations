@@ -46,21 +46,14 @@ The same conditions were used for simulation and fitting.
 | buffer   || $4\sigma$ |
 | nx       || 32 |
 
-```{r plotscenario, echo = FALSE, warning = FALSE, message = FALSE, fig.width = 4, fig.height = 4, fig.cap = "Figure: Simulation scenario; circle is 95% probability contour for hypothetical centrally placed home range."}
-library(secr)
-grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
-msk <- make.mask(grid, buffer = 80, nx = 32)
-par(mar = c(1,1,1,1))
-plot(msk, dots=F, mesh='white', col=grey(0.9))
-plot(grid, add = TRUE, detpar=list(pch=16))
-symbols(mean(msk$x), mean(msk$y), inches = FALSE, circles = 2.45 * 20, add = TRUE)
-plot(sim.popn(12.5, grid, buffer = 80), frame = FALSE, add = TRUE, cex = 0.7)
-```
 ## Package version, date and platform
 
-```{r versions, results = 'hold', echo = FALSE}
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim <- TRUE
+runsim  <- FALSE
+figures <- TRUE
+cache   <- TRUE
+nrepl   <- 200
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
@@ -107,10 +100,8 @@ simMID.capthist <- function(traps, popn, detectfn, detectpar = list(),
 ```
 
 ```{r common settings, eval = TRUE, message = FALSE, results = "hide"}
-source('../setup.R')
 grid <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "proximity")
 fitarg <- list(detectfn = 'HHN', model = lambda0 ~ 1, start = NULL)
-nrepl <- 200
 ```
 
 ### Run MID simulations
@@ -132,13 +123,20 @@ scen1 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14,
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg1), fitindex = 1)
 ```
 
-```{r MID1 scenario summary, cache = TRUE}
+```{r MID1 scenario summary, cache = cache}
 scenarioSummary(scen1, grid)
 ```
 
-```{r MID1-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
-MIDsims1 <- run.scenarios(nrepl = nrepl, scen1, trapset = grid, det.args = detarg1, 
-    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+```{r MID1-run, eval = runsim, cache = cache, message = FALSE, warning = FALSE, results = "hide"}
+MIDsims1 <- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen1, 
+    trapset   = grid, 
+    det.args  = detarg1, 
+    fit       = TRUE, 
+    fit.args  = fitarg, 
+    seed      = 1234, 
+    CH.function = "simMID.capthist")
 saveRDS(MIDsims1, file = 'MIDsims1.RDS')
 ```
 
@@ -148,13 +146,20 @@ scen2 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14,
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg2), fitindex = 1)
 ```
 
-```{r MID2 scenario summary, cache = TRUE}
+```{r MID2 scenario summary, cache = cache}
 scenarioSummary(scen2, grid)
 ```
 
-```{r MID2-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
-MIDsims2 <- run.scenarios(nrepl = nrepl, scen2, trapset = grid, det.args = detarg2, 
-    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+```{r MID2-run, eval = runsim, cache = cache, message = FALSE, warning = FALSE, results = "hide"}
+MIDsims2 <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen2, 
+    trapset     = grid, 
+    det.args    = detarg2, 
+    fit         = TRUE, 
+    fit.args    = fitarg, 
+    seed        = 1234, 
+    CH.function = "simMID.capthist")
 saveRDS(MIDsims2, file = 'MIDsims2.RDS')
 ```
 
@@ -164,13 +169,20 @@ scen3 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14,
     lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg3))
 ```
 
-```{r MID3 scenario summary, cache = TRUE}
+```{r MID3 scenario summary, cache = cache}
 scenarioSummary(scen3, grid)
 ```
 
-```{r MID3-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
-MIDsims3 <- run.scenarios(nrepl = nrepl, scen3, trapset = grid, det.args = detarg3, 
-    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+```{r MID3-run, eval = runsim, cache = cache, message = FALSE, warning = FALSE, results = "hide"}
+MIDsims3 <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen3, 
+    trapset     = grid, 
+    det.args    = detarg3, 
+    fit         = TRUE, 
+    fit.args    = fitarg, 
+    seed        = 1234, 
+    CH.function = "simMID.capthist")
 saveRDS(MIDsims3, file = 'MIDsims3.RDS')
 ```
 
@@ -181,13 +193,20 @@ scen4 <- scen4[order(scen4$D, scen4$detindex),]
 scen4$scenario <- 1:nrow(scen4)
 ```
 
-```{r MID4 scenario summary, cache = TRUE}
+```{r MID4 scenario summary, cache = cache}
 scenarioSummary(scen4, grid)
 ```
 
-```{r MID4-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
-MIDsims4 <- run.scenarios(nrepl = nrepl, scen4, trapset = grid, det.args = detarg3, 
-    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+```{r MID4-run, eval = runsim, cache = cache, message = FALSE, warning = FALSE, results = "hide"}
+MIDsims4 <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen4, 
+    trapset     = grid, 
+    det.args    = detarg3, 
+    fit         = TRUE,  
+    fit.args    = fitarg, 
+    seed        = 1234, 
+    CH.function = "simMID.capthist")
 saveRDS(MIDsims4, file = 'MIDsims4.RDS')
 ```
 
@@ -198,13 +217,20 @@ scen5 <- scen5[order(scen5$lambda0, scen5$detindex),]
 scen5$scenario <- 1:nrow(scen5)
 ```
 
-```{r MID5 scenario summary, cache = TRUE}
+```{r MID5 scenario summary, cache = cache}
 scenarioSummary(scen5, grid)
 ```
 
-```{r MID5-run, eval = runsim, cache = TRUE, message = FALSE, warning = FALSE, results = "hide"}
-MIDsims5 <- run.scenarios(nrepl = nrepl, scen5, trapset = grid, det.args = detarg3, 
-    fit = TRUE, fit.args = fitarg, seed = 1234, CH.function = "simMID.capthist")
+```{r MID5-run, eval = runsim, cache = cache, message = FALSE, warning = FALSE, results = "hide"}
+MIDsims5 <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen5, 
+    trapset     = grid, 
+    det.args    = detarg3, 
+    fit         = TRUE, 
+    fit.args    = fitarg, 
+    seed        = 1234, 
+    CH.function = "simMID.capthist")
 saveRDS(MIDsims5, file = 'MIDsims5.RDS')
 ```
 
@@ -218,6 +244,8 @@ The simulation scenario resulted in the detection of about 110 individuals in th
 options(width=110, digits=4)
 MIDsims1 <- readRDS(file = 'MIDsims1.RDS')
 ```
+
+MIDsims1 completed with `r nrepl` replicates in `r round(MIDsims1$proctime/60,1)` minutes.
 
 ```{r MID-tables2, eval = TRUE, echo = FALSE}
 scenarios <- attr(detarg1, 'comb')
@@ -237,7 +265,7 @@ cat('sigma\n')
 cbind(scenarios, round(estS,4))
 ```
 
-```{r MID1 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 5, fig.height = 5, fig.cap = "Figure: Relative bias of parameter estimates from null model given misidentification. Shaded band: |RB| < 10%." }
+```{r MID1 figure, eval = figures, echo = FALSE, results = "hide", fig.width = 5, fig.height = 5, fig.cap = "Figure: Relative bias of parameter estimates from null model given misidentification. Shaded band: |RB| < 10%." }
 par(mfrow=c(1,1), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', bg = 'white', pty='s')
 x <- scenarios$pMID
 # when does RB exceed 10%?
@@ -260,11 +288,13 @@ MIDsims2 <- readRDS(file = 'MIDsims2.RDS')
 scenarios <- attr(detarg2, 'comb')
 ```
 
+MIDsims2 completed with `r nrepl` replicates in `r round(MIDsims2$proctime/60,1)` minutes.
+
 ```{r MID2-table2, eval = TRUE}
 cbind(scenarios, getcounts(MIDsims2)[,-5])
 ```
 
-```{r MID2 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 5, fig.height = 5, fig.cap = "Figure: Relative bias of parameter estimates from null model vs frequency of ghost identities. Shaded band: |RB| < 10%" }
+```{r MID2 figure, eval = figures, echo = FALSE, results = "hide", fig.width = 5, fig.height = 5, fig.cap = "Figure: Relative bias of parameter estimates from null model vs frequency of ghost identities. Shaded band: |RB| < 10%" }
 estD <- estimateSummary(MIDsims2)[,-1]
 estL <- estimateSummary(MIDsims2, 'lambda0')[,-1]
 estS <- estimateSummary(MIDsims2, 'sigma')[,-1]
@@ -290,6 +320,8 @@ MIDsims3 <- readRDS(file = 'MIDsims3.RDS')
 scenarios <- attr(detarg3, 'comb')
 ```
 
+MIDsims3 completed with `r nrepl` replicates in  `r round(MIDsims3$proctime/60,1)` minutes.
+
 ```{r MID3-table2, eval = TRUE, echo = FALSE}
 cbind(scenarios, getcounts(MIDsims3)[,-5])
 estD <- estimateSummary(MIDsims3)
@@ -303,7 +335,7 @@ cat('sigma\n')
 cbind(scenarios, round(estS,4))
 ```
 
-```{r MID3 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 6, fig.height = 6, fig.cap = "Figure: Relative bias of parameter estimates from null model when some individuals cannot be distinguished. Shaded band: |RB| < 10%. Inset shows same plot with arithmetic x-axis." }
+```{r MID3 figure, eval = figures, echo = FALSE, results = "hide", fig.width = 6, fig.height = 6, fig.cap = "Figure: Relative bias of parameter estimates from null model when some individuals cannot be distinguished. Shaded band: |RB| < 10%. Inset shows same plot with arithmetic x-axis." }
 par(mfrow=c(1,1), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', bg = 'white', pty='s', fig = c(0,1,0,1))
 x <- scenarios$PI
 # when does RB exceed 10%?
@@ -337,6 +369,8 @@ MIDsims4 <- readRDS(file = 'MIDsims4.RDS')
 scenarios <- expand.grid(PI = c(0.00, 10^(seq(-5,-2,0.5))), D = 12.5 * c(0.25,0.5,1,2,4))
 ```
 
+MIDsims4 completed with `r nrepl` replicates in `r round(MIDsims4$proctime/60,1)` minutes.
+
 ```{r MID4-table2, eval = TRUE, echo = FALSE}
 cbind(scenarios, getcounts(MIDsims4)[,-5])
 countlegend(-5)
@@ -351,7 +385,7 @@ cat('sigma\n')
 cbind(scenarios, round(estS,4))
 ```
 
-```{r MID4 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 6, fig.height = 6, fig.cap = "Figure: Relative bias of parameter estimates from null model when some individuals cannot be distinguished. Shaded band: |RB| < 10%. " }
+```{r MID4 figure, eval = figures, echo = FALSE, results = "hide", fig.width = 6, fig.height = 6, fig.cap = "Figure: Relative bias of parameter estimates from null model when some individuals cannot be distinguished. Shaded band: |RB| < 10%. " }
 par(mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', bg = 'white', pty = 's')
 x <- scenarios$PI[1:8]
 plot(1,1,type='n', xlim=c(1e-5, 1e-2), log='x', ylim=c(-1,0.5), 
@@ -370,7 +404,7 @@ legend(0.000015, -0.55, legend = as.character(12.5 * c(0.25,0.5,1,2,4)),
 
 From the curves in the previous figure we can interpolate the threshold PI at which relative bias of the density estimate from a null model exceeds a given threshold e.g. 5\%. We plot this as a function of the expected number of individuals detected.
 
-```{r threshold, eval = TRUE, echo = FALSE}
+```{r threshold, eval = figures, echo = FALSE}
 par(pty = 's')
 threshold05 <- sapply(1:5, function(d) approx(estD[(d-1)*8 + 1:8,'RB'], x, xout=-0.05)$y)
 threshold10 <- sapply(1:5, function(d) approx(estD[(d-1)*8 + 1:8,'RB'], x, xout=-0.1)$y)
@@ -394,6 +428,8 @@ MIDsims5 <- readRDS(file = 'MIDsims5.RDS')
 scenarios <- expand.grid(PI = c(0.00, 10^(seq(-5,-2,0.5))), lambda0 = c(0.05,0.1,0.2))
 ```
 
+MIDsims5 completed with `r nrepl` replicates in `r round(MIDsims5$proctime/60,1)` minutes.
+
 ```{r MID5-table2, eval = TRUE, echo = FALSE}
 cbind(scenarios, getcounts(MIDsims5)[,-5])
 countlegend(-5)
@@ -402,7 +438,7 @@ cat('Density\n')
 cbind(scenarios, round(estD,4))
 ```
 
-```{r MID5 figure, eval = TRUE, echo = FALSE, results = "hide", fig.width = 6, fig.height = 6, fig.cap = "Figure: Relative bias of parameter estimates from null model when some individuals cannot be distinguished. Shaded band: |RB| < 10%. " }
+```{r MID5 figure, eval = figures, echo = FALSE, results = "hide", fig.width = 6, fig.height = 6, fig.cap = "Figure: Relative bias of parameter estimates from null model when some individuals cannot be distinguished. Shaded band: |RB| < 10%. " }
 par(mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', bg = 'white', pty = 's', fig = c(0,1,0,1))
 x <- scenarios$PI[1:8]
 plot(1,1,type='n', xlim=c(1e-5, 1e-2), log='x', ylim=c(-1,0.5), 

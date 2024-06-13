@@ -57,9 +57,13 @@ We wish to reproduce the simulation results of Stevenson et al. (2021) for a ran
 ## Package version, date and platform
 
 
-```{r versions, results = 'hold', echo = FALSE}
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim <- TRUE
+runsim  <- FALSE
+figures <- TRUE
+cache   <- TRUE
+nrepl   <- 100
+nrepl2  <- 500
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
@@ -68,7 +72,6 @@ metadata(runsim) # if FALSE picks up saved metadata.RDS
 We assume a single occasion.
 
 ```{r LDF code}
-source('../setup.R')
 simLDF.capthist <- function (traps, popn, detectfn, detectpar, noccasions = 1, 
                              cov.structure, sigma.u, rho, adjustmu = TRUE, shared = FALSE, ...)
 {
@@ -153,10 +156,17 @@ scen   <- make.scenarios(D = 1, lambda0 = 0.5, sigma = 100,  detectfn = 'HHN',
                          detindex = 1:length(detarg))
 ```
 
-```{r LDF old2 run, eval = FALSE}
-LDFsimsold2 <- run.scenarios(3, scen, trapset = trps, CH.function = "simLDF.capthist",
-              pop.args = poparg, det.args = detarg, fit = TRUE, fit.args = fitarg)
-saveRDS(LDFsimsold2, file = 'LDFsimsold2.RDS')
+```{r LDF old2 run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+LDFsims <- run.scenarios(
+    nrepl       = nrepl,
+    scenarios   =  scen, 
+    trapset     = trps, 
+    CH.function = "simLDF.capthist",
+    pop.args    = poparg, 
+    det.args    = detarg, 
+    fit         = TRUE, 
+    fit.args    = fitarg)
+saveRDS(LDFsims, file = 'LDFsims.RDS')
 ```
 
 ```{r LDF old2 shared, eval = TRUE}
@@ -168,26 +178,38 @@ scen   <- make.scenarios(D = 1, lambda0 = 0.5, sigma = 100,  detectfn = 'HHN',
                          detindex = 1:length(detarg))
 ```
 
-```{r LDF scenario summary, cache = TRUE, warning = FALSE}
+```{r LDF scenario summary, cache = cache, warning = FALSE}
 scenarioSummary(scen, trapset = trps)
 ```
 
-```{r LDF old2 shared run, eval = runsim, warning = FALSE}
-LDFsimsold2shared <- run.scenarios(3, scen, trapset = trps, CH.function = "simLDF.capthist",
-              pop.args = poparg, det.args = detarg, fit = TRUE, fit.args = fitarg)
-saveRDS(LDFsimsold2shared, file = 'LDFsimsold2shared.RDS')
+```{r LDF old2 shared run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+LDFsimsshared <- run.scenarios(
+    nrepl       = nrepl, 
+    scenarios   = scen, 
+    trapset     = trps, 
+    CH.function = "simLDF.capthist",
+    pop.args    = poparg, 
+    det.args    = detarg, 
+    fit         = TRUE, 
+    fit.args    = fitarg)
+saveRDS(LDFsimsshared, file = 'LDFsimsshared.RDS')
 ```
 
-```{r LDF figures 2, fig.width = 8, fig.height = 6}
-LDFsimsold2 <- readRDS(file = 'LDFsimsold2.RDS')
-LDFsimsold2shared <- readRDS(file = 'LDFsimsold2shared.RDS')
+```{r LDF old readRDS, echo = FALSE}
+LDFsims <- readRDS(file = 'LDFsims.RDS')
+LDFsimsshared <- readRDS(file = 'LDFsimsshared.RDS')
+```
+
+LDFsims completed with `r nrepl` replicates on `r nc` threads in `r round(LDFsims$proctime/60,1)` minutes.
+
+```{r LDF figures 2, eval = figures, fig.width = 8, fig.height = 6}
 parm <- do.call(rbind, lapply(detarg, as.data.frame))   # now flat
-estD <- estimateSummary(LDFsimsold2, 'D', validrange = c(0,10))
-estL <- estimateSummary(LDFsimsold2, 'lambda0', validrange = c(0,5))
-estS <- estimateSummary(LDFsimsold2, 'sigma', validrange = c(0,1000))
-estDs <- estimateSummary(LDFsimsold2shared, 'D', validrange = c(0,10))
-estLs <- estimateSummary(LDFsimsold2shared, 'lambda0', validrange = c(0,5))
-estSs <- estimateSummary(LDFsimsold2shared, 'sigma', validrange = c(0,1000))
+estD <- estimateSummary(LDFsims, 'D', validrange = c(0,10))
+estL <- estimateSummary(LDFsims, 'lambda0', validrange = c(0,5))
+estS <- estimateSummary(LDFsims, 'sigma', validrange = c(0,1000))
+estDs <- estimateSummary(LDFsimsshared, 'D', validrange = c(0,10))
+estLs <- estimateSummary(LDFsimsshared, 'lambda0', validrange = c(0,5))
+estSs <- estimateSummary(LDFsimsshared, 'sigma', validrange = c(0,1000))
 leg <- c('D','lambda0','sigma')
 
 plotone <- function (estD,estL,estS, shared, rho) {
@@ -215,7 +237,7 @@ plotone(estDs,estLs,estSs, shared = 'shared,', rho = 450)
 
 ## Interpretation
 
-## One-off
+To come
 
 # Hooten et al. 2024 GCR
 
@@ -267,12 +289,15 @@ simGCR.capthist <- function (traps, popn, detectfn, detectpar, noccasions, AClam
 }
 ```
 
+```{r grid and mask}
+grid64 <- make.grid(nx = 8, ny = 8, spacing = 1/7, detector = 'proximity')
+mask64 <- make.mask(grid64, buffer = 0.5)
+```
+
 ## Illustration
 
 Simulating (potentially) multiple centres per animal across the mask results in very wide 'movements'.
-```{r demo, warning = FALSE, fig.width=7, fig.height=7, fig.cap = "Figure: Simulated multinuclear data (centres joined by white line if more than one per animal). Detected animals: filled circles, undetected animals: white open circles. Detection data overlaid in colour."}
-grid64 <- make.grid(nx = 8, ny = 8, spacing = 1/7, detector = 'proximity')
-mask64 <- make.mask(grid64, buffer = 0.5)
+```{r demo, eval = figures, warning = FALSE, fig.width=7, fig.height=7, fig.cap = "Figure: Simulated multinuclear data (centres joined by white line if more than one per animal). Detected animals: filled circles, undetected animals: white open circles. Detection data overlaid in colour."}
 pop <- sim.popn(core = grid64, buffer = 0.5, Nbuffer = 29, Ndist = "fixed")
 plotone <- function(r, ...) {
     plot(mask64, border=0.1, dots=F, col=grey(0.85))
@@ -292,7 +317,6 @@ junk <- sapply(1:4, plotone, traps = grid64, popn = pop, detectfn = 'HHN', nocca
 ## Run simulations
 
 ```{r GCR scenarios, eval = TRUE}
-source('../setup.R')
 poparg <- list(buffer = 0.5, Ndist = "fixed")
 detarg <- list(AClam = 0.5)
 fitarg <- list(detectfn = 'HHN', details = list(distribution = "binomial"))
@@ -300,10 +324,17 @@ scen   <- make.scenarios(D = 29/maskarea(mask64), lambda0 = exp(-1), sigma = 0.1
         detectfn = 'HHN', detindex = 1:length(detarg), noccasions = 5)
 ```
 
-```{r GCR run, eval = runsim, warning = FALSE}
-GCRsims <- run.scenarios(100, scen, trapset = grid64, maskset = mask64, 
-    CH.function = "simGCR.capthist", pop.args = poparg, det.args = detarg, 
-    fit = TRUE, fit.args = fitarg)
+```{r GCR run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+GCRsims <- run.scenarios(
+    nrepl       = nrepl2, 
+    scenarios   = scen, 
+    trapset     = grid64, 
+    maskset     = mask64, 
+    CH.function = "simGCR.capthist", 
+    pop.args    = poparg, 
+    det.args    = detarg, 
+    fit         = TRUE,
+    fit.args    = fitarg)
 saveRDS(GCRsims, file = 'GCRsims.RDS')
 ```
 
@@ -311,6 +342,11 @@ saveRDS(GCRsims, file = 'GCRsims.RDS')
 
 ```{r GCR summary}
 GCRsims <- readRDS(file = 'GCRsims.RDS')
+```
+
+GCRsims completed with `r nrepl2` replicates on `r nc` threads in `r round(GCRsims$proctime/60,1)` minutes.
+
+```{r GCR summary2}
 estD <- estimateSummary(GCRsims, 'D')
 estL <- estimateSummary(GCRsims, 'lambda0')
 estS <- estimateSummary(GCRsims, 'sigma')
