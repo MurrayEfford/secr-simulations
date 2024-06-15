@@ -1,4 +1,4 @@
-# stratify.R
+# stratumTable.R
 
 # report subregion density estimates and overall
 
