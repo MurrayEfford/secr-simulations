@@ -22,11 +22,6 @@ breaching assumptions of spatially explicit capture--recapture models.
 
 Covariation of density and effort or detection leads to bias if not adequately modelled.
 
-<!-- To render from (linux) command line use full file path e.g., -->
-<!-- Rscript -e "rmarkdown::render('/home/effmu21p/STR/secr-simulations-STR.rmd')" -->
-<!-- Requires pandoc, see e.g., -->
-<!-- http://tpepler.github.io/howto/howto-render-r-markdown-from-command-line.html -->
-
 ## Settings
 
 Two square grids of 64 binary proximity detectors at spacing $2\sigma$.  
