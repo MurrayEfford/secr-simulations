@@ -2,9 +2,11 @@
 
 SITE UNDER DEVELOPMENT - RESULTS MAY CHANGE (EXPECT MORE EXPLANATION IN EACH HTML)
 
-This site holds R code and results for simulations to assess the robustness of spatially explicit capture--recapture estimates of population density to various breaches of model assumptions.
+This site holds R code and results for simulations to assess the robustness of spatially explicit capture--recapture estimates of population density to various breaches of model assumptions. Results are used in a forthcoming report.
 
-All simulations were conducted in the R package **secrdesign** and SECR models were fitted by maximum likelihood in R package **secr**.
+All simulations were conducted in the R package **secrdesign** and SECR models were fitted by maximum likelihood in R package **secr**. Some shared code and other detail is given in the file 'setup.R' in the root folder.
+
+Simulations used the New Zealand eScience Infrastructure (NeSI) high performance computing facilities URL https://www.nesi.org.nz. Batch operation on that platform did not allow R graphics, so final rendering of the .rmd files was performed on a desktop machine using stored simulation results (the .RDS files in each folder).
 
 Follow the HTML link for results and the RMD link for R code.
 
