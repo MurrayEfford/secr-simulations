@@ -55,9 +55,11 @@ The same conditions were used for simulation and fitting.
 
 ## Package version, date and platform
 
-```{r versions, results = 'hold', echo = FALSE}
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim <- TRUE
+runsim  <- TRUE
+figures <- FALSE
+nrepl   <- 100
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
 
@@ -192,15 +194,20 @@ scenarioSummary(scen, layouts)
 ### Run REP simulations
 
 ```{r REP run, eval = runsim, cache = TRUE, warning = FALSE}
-REPsims <- run.scenarios(nrepl = 500, scen, trapset = grid, nx = 64,
+REPsims <- run.scenarios(nrepl = nrepl, scen, trapset = grid, nx = 64,
                          fit = TRUE, fit.args = fitarg, seed = 12345)
 saveRDS(REPsims, file = 'REPsims.RDS')
 ```
 
+```{r REP readRDS, echo = FALSE}
+REPsims <- readRDS(file = 'REPsims.RDS')
+```
+
+REPsims completed with `r nrepl` replicates on `r nc` threads in `r round(REPsims$proctime/60,1)` minutes.
+
 ## Results
 
-```{r REP results, eval = TRUE, echo = TRUE}
-REPsims <- readRDS(file = 'REPsims.RDS')
+```{r REP results2, eval = TRUE, echo = TRUE}
 estD <- estimateSummary(REPsims)
 estD
 ```
@@ -212,7 +219,7 @@ $\mbox{rRMSE}(\hat D) = \frac{1}{D} \sqrt {\frac{1}{N} \sum_{i=1}^N {(D - \hat D
 $\mbox{RB}(\hat D) = \frac{1}{N} \sum_{i=1}^N {(D - \hat D_i)}/D$ 
 
 
-```{r REP figure, eval = TRUE, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Effect of array size on relative bias (RB) and relative root-mean-square error (rRMSE) of density estimates"}
+```{r REP figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Effect of array size on relative bias (RB) and relative root-mean-square error (rRMSE) of density estimates"}
 
 par(mfrow=c(1,2), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', cex = 1, pty='s')
 
@@ -240,7 +247,7 @@ legend(2, 0.5, legend=c('HHN','HEX'), pch=c(16,24), pt.bg = 'white', cex = 1)
 
 Efford (2011 Ecology 92: 2202--2207) simulated area-search data with a half-normal detection function. The searched area varied from $1 \sigma^2$ to $64 \sigma^2$. We plot the results as a function of area-diameter divided by 95\% BVN home range as with the preceding simulations. Bias results when the linear diagonal of the searched area is less than about 75\% of the 95\% home-range diameter. Given the arbitrariness of both measures (area dimension, home range size) we suggest the simple rule: the grid or searched area should be at least the size of the home range.
 
-```{r plotefford2011}
+```{r plotefford2011, eval = figures}
 searcharea <- c(1,2,4,8,16,32,64)
 diag <- sqrt(2) * sqrt(searcharea)
 HR95 <- 2 * 2.45 * 1
