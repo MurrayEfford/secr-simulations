@@ -1,6 +1,6 @@
 # Spatially Explicit Capture-Recapture Simulations
 
-SITE UNDER DEVELOPMENT - RESULTS WILL CHANGE
+SITE UNDER DEVELOPMENT - RESULTS MAY CHANGE (EXPECT MORE EXPLANATION IN EACH HTML)
 
 This site holds R code and results for simulations to assess the robustness of spatially explicit capture--recapture estimates of population density to various breaches of model assumptions.
 
@@ -19,10 +19,11 @@ Follow the HTML link for results and the RMD link for R code.
 | [Mh]   | [Mh rmd]   | Individual heterogeneity |
 | [Mt]   | [Mt rmd]   | Temporal variation |
 | [OU]   | [OU rmd]   | Serial correlation of location within home range |
+| [RSF]  | [RSF rmd]  | Habitat-driven variation in related detection<sup>1</sup> |
 | [SARE] | [SARE rmd] | Spatially autocorrelated random effects<sup>1</sup> |
 | [STR]  | [STR rmd]  | Stratification and spatial variation in density, effort and detection |
 
-1. SARE includes the scenarios considered by Royle et al. (2013), Efford (2014), Moqanaki et al. (2021), and Dey et al. (2023)
+1. RSF and SARE are different aspects of the same phenomenon; RSF relates to Royle et al. (2013) and Efford (2014), whereas SARE relates to Moqanaki et al. (2021) and Dey et al. (2023).
 
 Please report Issues on this GitHub page. 
 
@@ -38,6 +39,8 @@ Royle, J. A., Chandler, R.B., Sun, C.C., and Fuller, A. K. 2013. Integrating res
 
 Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structures for detections of individuals in spatial capture--recapture models. Biometrics 78: 963--73.
 
+Last updated: 17 June 2024
+
 [ARR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/ARR/secr-simulations-ARR.html
 [CLO]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/CLO/secr-simulations-CLO.html
 [DNC]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/DNC/secr-simulations-DNC.html
@@ -47,6 +50,7 @@ Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structu
 [Mh]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mh/secr-simulations-Mh.html
 [Mt]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mt/secr-simulations-Mt.html
 [OU]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/OU/secr-simulations-OU.html
+[RSF]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/RSF/secr-simulations-RSF.html
 [SARE]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/SARE/secr-simulations-SARE.html
 [STR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/STR/secr-simulations-STR.html
 
@@ -59,6 +63,6 @@ Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structu
 [Mh rmd]: Mh/secr-simulations-Mh.rmd
 [Mt rmd]: Mt/secr-simulations-Mt.rmd
 [OU rmd]: OU/secr-simulations-OU.rmd
-[REP rmd]: REP/secr-simulations-REP.rmd
+[RSF rmd]: RSF/secr-simulations-RSF.rmd
 [SARE rmd]: SARE/secr-simulations-SARE.rmd
 [STR rmd]: STR/secr-simulations-STR.rmd
