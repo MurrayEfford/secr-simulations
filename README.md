@@ -1,6 +1,6 @@
-# Spatially Explicit Capture-Recapture Simulations
+# Spatially Explicit Capture--Recapture Simulations
 
-SITE UNDER DEVELOPMENT - RESULTS MAY CHANGE (EXPECT MORE EXPLANATION IN EACH HTML)
+SITE UNDER DEVELOPMENT - RESULTS MAY CHANGE AND SOME DETAILS HAVE TO BE CHECKED
 
 This site holds R code and results for simulations to assess the robustness of spatially explicit capture--recapture estimates of population density to various breaches of model assumptions. Results are used in a forthcoming report.
 
