@@ -26,13 +26,15 @@ Detected animals may be
 
 1. mis-identified as an existing marked (known) individual, or 
 2. mistakenly identified as a new 'ghost' individual, or
-3. indistinguishable from another with the same genotype at the loci sampled.
+3. indistinguishable from another with the same genotype at the loci sampled, or
+4. mistakenly tagged as a new individual after loss of a previous tag.
 
-We simulate these mechanisms separately (MID1, MID2, MID3).
+We simulate these mechanisms separately (MID1, MID2, MID3, MID6).
 
 ## Settings
 
-Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.  
+MID1-5 Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.  
+MID6 Square grid of 64 multi-catch traps at spacing $c = 2\sigma$.  
 
 The same conditions were used for simulation and fitting.
 
@@ -59,11 +61,14 @@ metadata(runsim) # if FALSE picks up saved metadata.RDS
 
 ## Simulation code
 
-This alternative capthist simulation function generates a capthist the usual way with `sim.capthist` and then scrambles the identities according to one of the three mechanisms.
+This alternative capthist simulation function generates a capthist the usual 
+way with `sim.capthist` and then scrambles the identities according to one of 
+the four mechanisms.
 
 ```{r MID capthist, eval = TRUE, message = FALSE, results = "hide"}
 simMID.capthist <- function(traps, popn, detectfn, detectpar = list(),
-                            noccasions = 10, pMID = 0, pGhost = 0, PI = 0, ...)
+                            noccasions = 10, pMID = 0, pGhost = 0, PI = 0, 
+                            pTagloss = 0, ...)
 {
     ch0 <- sim.capthist(traps, popn, detectfn, detectpar, noccasions)
     n <- nrow(ch0)
@@ -88,6 +93,16 @@ simMID.capthist <- function(traps, popn, detectfn, detectpar = list(),
         groupID <- cutree(hclust(d, 'single'), h = 0.1)  # groups individuals linked by dist==0
         newcapt$ID <- groupID[capt$ID]
     }
+    else if (pTagloss>0) {
+        # detections receive new ID with probability dependent on interval from last
+        elapsed <- c(NA, diff(capt$Occasion))           # assume sorted by ID, occasion
+        elapsed[match(unique(capt$ID), capt$ID)] <- NA  # not first
+        novel <- runif(nrow(capt)) < (1 - (1-pTagloss)^elapsed)
+        novel[is.na(novel)] <- FALSE
+        novelist <- split(novel, capt$ID)  # assumes ID ordered factor levels
+        subID <- unlist(lapply(novelist, cumsum))
+        newcapt$ID <- paste('N',capt$ID, subID, sep='.')
+    }
     # re-read
     ch <- make.capthist(newcapt, traps, noccasions = noccasions)
     if (PI>0) {
@@ -107,7 +122,7 @@ fitarg <- list(detectfn = 'HHN', model = lambda0 ~ 1, start = NULL)
 ### Run MID simulations
 
 ```{r test simMID.capthist, eval = FALSE, echo = FALSE, message = FALSE, results = "hide"}
-# test code
+# test code; large lambda0
 pop <- sim.popn(12.5, grid)
 ch <- simMID.capthist (grid, popn = pop, detectfn=14, detectpar = list(lambda0=0.2, sigma=20),
                        noccasions = 10, pMID=0, pGhost=0.1)
@@ -233,6 +248,31 @@ MIDsims5 <- run.scenarios(
     CH.function = "simMID.capthist")
 saveRDS(MIDsims5, file = 'MIDsims5.RDS')
 ```
+
+```{r MID6-scen, eval = TRUE, message = FALSE, warning = FALSE, results = "hide"}
+detarg6 <- expand.arg(pTagloss = c(0.00, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2))
+scen6 <- make.scenarios(D = 12.5, noccasions = c(5,10), detectfn = 14, 
+    lambda0 = 0.1, sigma = 20, detindex = 1:length(detarg6), fitindex = 1)
+gridmulti <- make.grid(nx = 8, ny = 8, spacing = 40, detector = "multi")
+```
+
+```{r MID6 scenario summary, cache = cache}
+scenarioSummary(scen6, gridmulti)
+```
+
+```{r MID6-run, eval = runsim, cache = cache, message = FALSE, warning = FALSE, results = "hide"}
+MIDsims6 <- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen6, 
+    trapset   = gridmulti, 
+    det.args  = detarg6, 
+    fit       = TRUE, 
+    fit.args  = fitarg, 
+    seed      = 1234, 
+    CH.function = "simMID.capthist")
+saveRDS(MIDsims6, file = 'MIDsims6.RDS')
+```
+
 
 ## Results
 
@@ -455,6 +495,55 @@ legend(0.000015, -0.55, legend = as.character(c(0.05,0.1,0.2)),
        pch = 21, pt.bg = blu5[2:4], cex=0.85, pt.cex = 1.4)
 ```
 
+### MID6 Tag loss
+
+```{r MID-tables6a, eval = TRUE, echo = FALSE, results = "hold"}
+options(width=110, digits=4)
+MIDsims6 <- readRDS(file = 'MIDsims6.RDS')
+```
+
+MIDsims6 completed with `r nrepl` replicates in `r round(MIDsims6$proctime/60,1)` minutes.
+
+```{r MID-tables6b, eval = TRUE, echo = FALSE}
+scenarios <- cbind(noccasions=scen6$noccasions, attr(detarg6, 'comb')[scen6$detindex,,drop=F])
+cbind(scenarios, getcounts(MIDsims6)[,-5])
+countlegend(-5)
+```
+
+```{r MID-tables6c, echo = FALSE}
+estD <- estimateSummary(MIDsims6)[,-1]
+estL <- estimateSummary(MIDsims6, 'lambda0')[,-1]
+estS <- estimateSummary(MIDsims6, 'sigma')[,-1]
+cat('Density\n')
+cbind(scenarios, round(estD,4))
+cat('lambda0\n') 
+cbind(scenarios, round(estL,4))
+cat('sigma\n')
+cbind(scenarios, round(estS,4))
+```
+
+```{r MID6 thresholds}
+# when does RB exceed 10%?
+OK <- scenarios$noccasions == 5
+approx(estD[OK,]$RB, scenarios$pTagloss[OK], xout=0.1)$y
+OK <- scenarios$noccasions == 10
+approx(estD[OK,]$RB, scenarios$pTagloss[OK], xout=0.1)$y
+```
+
+```{r MID6 figure, eval = figures, echo = FALSE, results = "hide", fig.width = 5, fig.height = 5, fig.cap = "Figure: Relative bias of parameter estimates from null model given tag loss. Shaded band: |RB| < 10%." }
+OK <- scenarios$noccasions == 10
+x <- scenarios$pTagloss[OK]
+par(mfrow=c(1,1), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', bg = 'white', pty='s')
+leg <- c('D','lambda0','sigma')
+plot(0,0,type='n', xlim=c(0.002,0.2), log='x', ylim=c(-1,1), xlab = 'Proportion tags lost per occasion', ylab='RB')
+shade(0.1)
+abline(h=0, lty=2)
+addRB(x, estL[OK,], type='o', pch=21, bg = 'white')
+addRB(x, estS[OK,], type='o', pch=24, bg = 'white', star = 1.0)
+addRB(x, estD[OK,], type='o', pch=21, bg = yob5[3], cex = 1.3)
+legend(0.003, 0.9, legend = leg, pch=c(21,21,24), cex = 0.85, pt.cex=1.2, pt.bg=c(yob5[3],'white','white'))
+```
+
 ## Interpretation
 
 ### MID1
@@ -476,3 +565,8 @@ Varying true density has a large effect on the relationship between PI and bias 
 ### MID5
 
 Although varying detection probability ($\lambda_0$) in general should shift $\mbox E (n)$ and hence $\mbox{RB}(\hat D)$ for given PI, these simulations effected only a small change in $\mbox E (n)$.
+
+### MID6
+
+Tag loss caused positive relative bias in density estimates on the order of the per-occasion probability (pTagloss) times the number of occasions divided by 2. In the simulations with 10 occasions, $RB(\hat D) > +10\%$ when pTagloss $>$ 0.019; the threshold increased to 0.044 when the number of occasions was reduced to 5. Estimates of $\sigma$ remained unbiased (with potentially a slight reduction in precision owing to the reduced number of recaptures).
+
