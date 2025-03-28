@@ -29,6 +29,8 @@ These simulations extend the empirical basis for the conclusion.
 
 Square grid of 64 binary proximity detectors at spacing $c = 2$.  
 
+Also elongated grid 16 x 4.
+
 The same conditions were used for simulation and fitting. 
 
 | Parameter | Value(s) |
@@ -46,10 +48,12 @@ The same conditions were used for simulation and fitting.
 ```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
 runsim  <- FALSE
+runextra <- FALSE
 figures <- TRUE
 cache   <- TRUE
 nrepl   <- 500
-metadata(runsim) # if FALSE picks up saved metadata.RDS
+nrepl2  <- 200
+metadata(runsim, extra = runextra) # if not run picks up saved metadata.RDS
 ```
 
 ## Simulation code
@@ -84,6 +88,32 @@ ARRsims <- run.scenarios(
     fit.args  = fitarg, 
     seed      = 12345)
 saveRDS(ARRsims, file = 'ARRsims.RDS')
+```
+
+### Repeat with elongated grid
+
+```{r ARR2 scenarios, eval = TRUE, message = FALSE, results = "hide"}
+grid2 <- make.grid(nx = 16, ny = 4, spacing = 40, detector = "proximity")
+fitarg <- expand.arg(detectfn = c(14,16))
+ratio <- seq(0.5,2.5,0.25)
+R95 <- max(dist(grid2)) / ratio
+scen2 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
+    lambda0 = 0.1, sigma = R95/2/2.45, fitindex = 1:2)
+# scale density to avoid variation in # detections due to sigma
+# result corresponds to D = 12.5 when sigma = 20 (outside simulated range)
+scen2$D <- scen2$D / (scen2$sigma / 20)^2
+```
+
+```{r ARR2 run, eval = runextra, cache = cache, warning = FALSE, message = FALSE}
+ARR2sims <- run.scenarios(
+    nrepl     = nrepl2, 
+    scenarios = scen2, 
+    trapset   = grid2, 
+    nx        = 128,         # increase to maintain approximately same spacing
+    fit       = TRUE, 
+    fit.args  = fitarg, 
+    seed      = 12345)
+saveRDS(ARR2sims, file = 'ARR2sims.RDS')
 ```
 
 ## Results
@@ -123,6 +153,43 @@ addRB(x, estD[10:18,], type='o', pch=24, bg = 'white', xoffset = 0.02)
 legend(2, 0.2, legend=c('HHN','HEX'), pch=c(16,24), pt.bg = 'white', cex = 1)
 
 plot(0,0,type='n', xlim=c(0,2.8), ylim=c(0, 0.5), 
+     xlab = 'Array diameter / HR diameter',
+     ylab = expression(paste('rRMSE (', hat(italic(D)), ')') ) )
+points(x, estD[1:9,'rRMSE'], type='o', pch=16, cex = 1.2)
+points(x+0.02, estD[10:18,'rRMSE'], type='o', pch=24, bg='white', cex=1.1)
+legend(2, 0.5, legend=c('HHN','HEX'), pch=c(16,24), pt.bg = 'white', cex = 1)
+```
+
+## Supplementary results 2025-03-28
+
+```{r ARR2 results, eval = TRUE, echo = FALSE}
+ARR2sims <- readRDS(file = 'ARR2sims.RDS')
+```
+
+ARR2sims completed with `r nrepl2` replicates on `r nc` threads in `r round(ARR2sims$proctime/60,1)` minutes.
+
+```{r ARR2 results2, eval = TRUE, echo = TRUE}
+estD <- estimateSummary(ARR2sims)
+estD
+```
+
+```{r ARR2 figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Effect of array size on relative bias (RB) and relative root-mean-square error (rRMSE) of density estimates. Elongated grid."}
+
+par(mfrow=c(1,2), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o', cex = 1, pty='s')
+
+x <- max(dist(grid2)) / (2.45 * scen2$sigma[1:9] *2)
+
+plot(0,0,type='n', xlim=c(0,2.8), ylim=c(-0.2, 0.2), 
+     xlab = 'Array diameter / HR diameter', 
+     ylab = expression(paste('RB (', hat(italic(D)), ')') ) )
+shade(0.05)
+abline(h=0, lty=2)
+abline(v=0, col='grey')
+addRB(x, estD[1:9,], type='o', pch=16, cex=1.2)
+addRB(x, estD[10:18,], type='o', pch=24, bg = 'white', xoffset = 0.02)
+legend(2, 0.2, legend=c('HHN','HEX'), pch=c(16,24), pt.bg = 'white', cex = 1)
+
+plot(0,0, type='n', xlim=c(0,2.8), ylim=c(0, 0.5), 
      xlab = 'Array diameter / HR diameter',
      ylab = expression(paste('rRMSE (', hat(italic(D)), ')') ) )
 points(x, estD[1:9,'rRMSE'], type='o', pch=16, cex = 1.2)

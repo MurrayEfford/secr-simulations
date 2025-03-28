@@ -29,7 +29,7 @@ options(width = 100)
 
 # GENERAL
 
-metadata <- function(runsim) {
+metadata <- function(runsim, extra = FALSE) {
     # runsim TRUE : novel simulations so we compute and store the simulation conditions
     # runsim FALSE: merely retrieve and include the previously stored conditions
     if (runsim) {
@@ -44,6 +44,11 @@ metadata <- function(runsim) {
                       'Threads    ', setNumThreads(), '\n',
                       nr1, nr2,
                       'Run        ', date(), '\n')
+        # optional supplements 2025-03-28
+        if (extra) {
+            md0 <- readRDS('metadata.RDS')
+            md <- paste0(md0, 'Supplements\n', md)
+        }
         saveRDS(md, file = 'metadata.RDS')
     }
     else {
