@@ -88,6 +88,8 @@ countlegend <- function (rows = -5) {
 # GRAPHICS
 # ========
 
+grdevice <- 'ragg_png'  # added 2025-07-10; used on NeSI
+
 # predefine some colours
 yob5 <- RColorBrewer::brewer.pal(n = 5, name = "YlOrBr")
 blu5 <- RColorBrewer::brewer.pal(n = 5, name = "Blues")
