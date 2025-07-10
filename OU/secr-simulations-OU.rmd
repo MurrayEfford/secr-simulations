@@ -1,5 +1,5 @@
 ---
-title: "**secr** simulations OU"
+title: "**secr** simulations OU 2"
 author: "Murray Efford"
 date: "`r Sys.Date()`"
 header-includes:
@@ -15,7 +15,7 @@ output:
   word_document: default
 ---
 
-# Spatial autocorrelation OU
+# Spatial autocorrelation OU Version 2
 
 The simulations described here are part of a series documenting the effect of 
 breaching assumptions of spatially explicit capture--recapture models.
@@ -54,73 +54,25 @@ figures <- TRUE
 cache   <- TRUE
 nrepl   <- 200
 metadata(runsim) # if FALSE picks up saved metadata.RDS
-library(mvtnorm)  # for rmvnorm
 ```
+
+## Changes
+
+2025-07-10 recoded to use simOU functions in secr 5.2.5  
+2025-07-10 'grdevice' is set in setup.R to 'ragg_png' allowing graphics on NeSI  
 
 ## Simulation code
 
-We use a custom function to generate an 'secr' capthist object within `run.scenarios`. The detection parameter 'lambda0' is repurposed as tau, and 'noccasions' is interpreted as the number of time steps 'n.steps'. Detection happens when the location of an animal at one time step is within epsilon of a detector. The output capthist is a single-occasion sample.
-
-```{r OUcapthist}
-# OU algorithm adapted from Supplements of Ben Stevenson 2021 Biometrics paper
-simOU.capthist <- function (
-        traps,
-        popn,
-        detectpar = list(),
-        noccasions = 100,    # effective "duration"
-        epsilon,             # proximity threshold radius for detection
-        output = c('capthist', 'locations'),
-        ...)
-{
-    sim.ou <- function(mu, tau, sigma, n.steps){
-        mu <- as.numeric(mu)   # dodge issue with dataframe
-        start <- mvtnorm::rmvnorm(1, mean = mu, sigma = sigma^2*diag(2))
-        b <- -1/tau
-        v <- sigma^2
-        out <- matrix(0, nrow = n.steps, ncol = 2)
-        out[1, ] <- start
-        for (i in 2:n.steps){
-            out[i, ] <- mvtnorm::rmvnorm(1, 
-                                         mean = mu + exp(b) * (out[i - 1, ] - mu),
-                                         sigma = v * (1 - exp(2*b)) * diag(2))
-        }
-        out
-    }
-    captfn <- function (xy) {
-        loc.capt <- secr::edist(xy,traps) <= epsilon
-        apply(loc.capt, 2, sum)
-    }   
-    output <- match.arg(output)
-    N <- nrow(popn)
-    tau <- detectpar$lambda0
-    sigma <- detectpar$sigma
-    n.steps <- noccasions
-    locs <- apply(popn, 1, sim.ou, tau, sigma, n.steps, simplify = FALSE)
-    if (output == 'locations') {
-        return(locs)
-    }
-    else {
-        capt <- t(sapply(locs, captfn))
-        ch <- array(capt, dim = c(N,1,ncol(capt)), dimnames = list(1:N,NULL,NULL))
-        ch <- ch[apply(ch, 1, sum) > 0,,, drop = FALSE]   # drop null histories
-        class(ch) <- 'capthist'
-        traps(ch) <- traps
-        return(ch)
-    }
-}
-```
+From secr 5.2.5 it is possible to simulate OU movement and detection directly in secr. Detection happens when the location of an animal at one time step is within epsilon of a detector. The output capthist is a single-occasion sample.
 
 ```{r OU initial, eval = TRUE, message = FALSE, results = "hide"}
 grid   <- make.grid(nx = 8, ny = 8, spacing = 100, detector = "count")
-detarg <- list(epsilon = 10)
+msk    <- make.mask(grid, buffer = 500, type = 'trapbuffer')
 nstep  <- 100
-fitarg <- list(mask = make.mask(grid, buffer = 500, type = 'trapbuffer'), 
-               detectfn = 'HHN', binomN = nstep,
-               start = list(lambda0 = 1))  # tau is bad start for true lambda0
-# values of lambda0 become values of OU parameter 'tau'
+fitarg <- list(detectfn = 'HHN', binomN = 1)
 taulevels <- c(0.1, 1, 5, 10, 20, 50, 100)
-scen <- make.scenarios( D = 2, lambda0 = taulevels, sigma = 100, 
-                        noccasions = nstep, detectfn = 14)
+scen <- make.scenarios( D = 2, epsilon = 10, sigma = 100, tau = taulevels,
+                        noccasions = nstep, detectfn = 20)
 ```
 
 ```{r OUcode, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
@@ -128,10 +80,9 @@ OUsims <- run.scenarios(
     nrepl       = nrepl, 
     scenarios   = scen, 
     trapset     = grid, 
-    det.args    = detarg, 
+    maskset     = msk,
     fit         = TRUE, 
     fit.args    = fitarg, 
-    CH.function = "simOU.capthist", 
     seed        = 12345)
 saveRDS(OUsims, file = 'OUsims.RDS')
 ```
@@ -145,13 +96,12 @@ OUsims completed with `r nrepl` replicates in `r round(OUsims$proctime/60,1)` mi
 ## Results
 
 First display some examples of movement tracks.
-```{r OU demo1, eval = figures, results = "hide", fig.width=7, fig.height=7, fig.cap = "Figure: Examples of correlated movement paths over 100 time steps. Red dot is activity centre; grey circle is 95% contour of activity."}
+```{r OU demo1, eval = figures, dev = grdevice, results = "hide", fig.width=7, fig.height=7, fig.cap = "Figure: Examples of correlated movement paths over 100 time steps. Red dot is activity centre; grey circle is 95% contour of activity."}
 par(mfrow=c(2,2), mar = c(1,1,2,1), pty='s')
 set.seed(123)
 for (tau in c(0.1,1,10,100)) {
-    locs <- simOU.capthist(grid, matrix(c(0,0), nrow=1), detectpar = list(lambda0 = tau, sigma = 100), 
-                           noccasions = 100, epsilon=10, output = 'locations')
-    plot (locs[[1]], type='o', xlim=c(-350,350), ylim = c(-350,350), axes=F, xlab='', ylab='')
+    locs <- simOU(matrix(c(0,0), nrow=1), tau = tau, sigma = 100, noccasions = 100)
+    plot (locs, type='o', xlim=c(-350,350), ylim = c(-350,350), axes=F, xlab='', ylab='')
     mtext(side = 3, paste('tau = ', tau))
     points(0,0, pch = 16, col='red', cex = 1.2)
     box()
@@ -159,18 +109,17 @@ for (tau in c(0.1,1,10,100)) {
 }
 ```
 
-```{r OU demo2, eval = FALSE, echo = FALSE}
+```{r OU demo2, eval = FALSE, dev = grdevice, echo = FALSE}
 # unused code for a whole population of autocorrelated walks
 popn <- sim.popn(D = 1, core = grid, buffer = 500)
-locs <- simOU.capthist(grid, popn, detectpar = list(lambda0 = 100, sigma = 100), 
-                       noccasions = 100, epsilon=10, output = 'locations')
+locs <- simOU(popn, tau = 100, sigma = 100, noccasions = 100)
 par(mfrow=c(1,1), mar=c(1,1,1,1))
 plot(popn)
 mapply(points, locs, type = 'o', col = 1:length(locs))
-plot(traps, add=T)
+plot(grid, add=T)
 ```
 
-```{r OU rpsv, eval = figures, cache = TRUE, echo = FALSE, fig.width=6, fig.height=6, fig.cap = "Figure: Bivariate normal sigma for varying tau and n.steps"}
+```{r OU rpsv, eval = figures, dev = grdevice, cache = TRUE, echo = FALSE, fig.width=6, fig.height=6, fig.cap = "Figure: Bivariate normal sigma for varying tau and n.steps"}
 RPSVxy <- function(xy) {
     n <- nrow(xy)
     ss <- function (x) sum(x^2) - (sum(x))^2/n
@@ -179,8 +128,7 @@ RPSVxy <- function(xy) {
 set.seed(12345)
 popn <- sim.popn(D = 1, core = grid, buffer = 500)  # a set of AC
 onetau <- function (tau, n.steps) {
-    locs <- simOU.capthist(grid, popn, detectpar = list(lambda0 = tau, sigma = 100), 
-                           noccasions = n.steps, epsilon=10, output = 'locations')
+    locs <- simOU(popn, tau = tau, sigma = 100, noccasions = n.steps)
     mean(sapply(locs, RPSVxy))
 }
 tauval <- 10^seq(-0.5,4,0.5)
@@ -197,7 +145,6 @@ legend(800, 110, legend = steps, lty = 1, pch = 16:18, title = 'n.steps')
 Check the mean sample sizes for each scenario
 ```{r OUdatasummary, eval = TRUE, echo = FALSE, results = 'hold'}
 counts <- t(sapply(OUsims$output, function(x) apply(sapply(x, attr, 'counts'),1,mean)))
-taulevels <- c(0.1, 1, 5, 10, 20, 50, 100)
 cbind(tau = taulevels, counts[,1:4])
 df <- data.frame(Variable = c('tau','n','r','nmov','dpa'), 
            Definition = c('Autocorrelation parameter', 
@@ -210,7 +157,6 @@ print(df, row.names = FALSE, right = FALSE)
 
 ```{r OU tables, eval = TRUE, echo = FALSE}
 options(width=100)
-taulevels <- c(0.1, 1, 5, 10, 20, 50, 100)
 cat('Density\n')
 cbind(tau = taulevels, round(estimateSummary(OUsims)[,-1],4))
 cat('lambda0\n')
@@ -220,7 +166,7 @@ cat('sigma\n')
 cbind(tau = taulevels, round(estimateSummary(OUsims, 'sigma')[,-1],4))
 ```
 
-```{r OUfigures, eval = figures, echo = FALSE, fig.height = 3, fig.width=8, out.width="90%", fig.cap = "Figure: Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for null-model density estimates from Ornstein-Uhlenbeck model with autocorrelation parameter $\tau$."}
+```{r OUfigures, eval = figures, dev = grdevice, echo = FALSE, fig.height = 3, fig.width=8, out.width="90%", fig.cap = "Figure: Relative bias RB, relative standard error RSE, and coverage of 95% confidence intervals COV for null-model density estimates from Ornstein-Uhlenbeck model with autocorrelation parameter tau."}
 OUsims <- readRDS(file = 'OUsims.RDS')
 estD <- estimateSummary(OUsims)[,-1]
 estS <- estimateSummary(OUsims, 'sigma')[,-1]
@@ -249,15 +195,12 @@ In these simulations autocorrelation was damaging ($|\mbox{RB}(\hat D)| > 0.05$ 
 Run this code to obtain results for a single scenario. 
 ```{r OU oneoff, eval = FALSE, message = FALSE, warning = FALSE, results = "hide"}
 source('../setup.R')
-<<OUcapthist>>
 grid   <- make.grid(nx = 8, ny = 8, spacing = 100, detector = "count")
-detarg <- list(epsilon = 10)
-nstep  <- 100
-fitarg <- list(mask = make.mask(grid, buffer = 500, type = 'trapbuffer'), binomN = nstep,
-               detectfn = 'HHN', start = list(lambda0 = 1))  # tau is bad start for true lambda0
-# values of lambda0 become values of OU parameter 'tau'
-scen <- make.scenarios( D = 2, lambda0 = 50, sigma = 100, noccasions = nstep, detectfn = 14)
-oneoff <- run.scenarios(nrepl = 100, scen, trapset = grid, det.args = detarg, 
-    fit = TRUE, fit.args = fitarg, CH.function = "simOU.capthist", seed = 12345)
+msk    <- make.mask(grid, buffer = 500, type = 'trapbuffer')
+fitarg <- list(binomN = 1, detectfn = 'HHN')
+scen   <- make.scenarios( D = 2, epsilon = 10, sigma = 100, tau = 100, 
+                        noccasions = 100, detectfn = 20)
+oneoff <- run.scenarios(nrepl = 10, scen, trapset = grid,  maskset = msk,
+    fit = TRUE, fit.args = fitarg, seed = 12345)
 ```
 
