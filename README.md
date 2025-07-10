@@ -41,7 +41,7 @@ Royle, J. A., Chandler, R.B., Sun, C.C., and Fuller, A. K. 2013. Integrating res
 
 Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structures for detections of individuals in spatial capture--recapture models. Biometrics 78: 963--73.
 
-Last updated: 17 June 2024
+Last updated: 10 July 2025
 
 [ARR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/ARR/secr-simulations-ARR.html
 [CLO]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/CLO/secr-simulations-CLO.html
