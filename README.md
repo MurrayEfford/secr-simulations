@@ -6,7 +6,7 @@ This site holds R code and results for simulations to assess the robustness of s
 
 All simulations were conducted in the R package **secrdesign** and SECR models were fitted by maximum likelihood in R package **secr**. Some shared code and other detail is given in the file 'setup.R' in the root folder.
 
-Simulations used the New Zealand eScience Infrastructure (NeSI) high performance computing facilities URL https://www.nesi.org.nz. Batch operation on that platform did not allow R graphics, so final rendering of the .rmd files was performed on a desktop machine using stored simulation results (the .RDS files in each folder).
+Simulations used the New Zealand eScience Infrastructure (NeSI) high performance computing facilities URL https://www.nesi.org.nz. Prior to 2025, batch operation on that platform did not allow R graphics, so final rendering of the .rmd files was performed on a desktop machine using stored simulation results (the .RDS files in each folder).
 
 Follow the HTML link for results and the RMD link for R code.
 
@@ -19,6 +19,8 @@ Follow the HTML link for results and the RMD link for R code.
 | [MID]  | [MID rmd]  | Mis-identification |
 | [Mb]   | [Mb rmd]   | Behavioural effects |
 | [Mh]   | [Mh rmd]   | Individual heterogeneity |
+| [MhS]   | [MhS rmd]   | Spatial trend  in presence of individual heterogeneity |
+| [MhT]   | [MhT rmd]   | Temporal trend in presence of individual heterogeneity |
 | [Mt]   | [Mt rmd]   | Temporal variation |
 | [OU]   | [OU rmd]   | Serial correlation of location within home range |
 | [RSF]  | [RSF rmd]  | Habitat-driven variation in related detection<sup>1</sup> |
@@ -50,6 +52,8 @@ Last updated: 10 July 2025
 [MID]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/MID/secr-simulations-MID.html
 [Mb]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mb/secr-simulations-Mb.html
 [Mh]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mh/secr-simulations-Mh.html
+[MhS]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/MhS/secr-simulations-MhS.html
+[MhT]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/MhT/secr-simulations-MhT.html
 [Mt]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/Mt/secr-simulations-Mt.html
 [OU]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/OU/secr-simulations-OU.html
 [RSF]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/RSF/secr-simulations-RSF.html
@@ -63,6 +67,8 @@ Last updated: 10 July 2025
 [MID rmd]: DNC/secr-simulations-MID.rmd
 [Mb rmd]: Mb/secr-simulations-Mb.rmd
 [Mh rmd]: Mh/secr-simulations-Mh.rmd
+[MhS rmd]: MhS/secr-simulations-MhS.rmd
+[MhT rmd]: MhT/secr-simulations-MhT.rmd
 [Mt rmd]: Mt/secr-simulations-Mt.rmd
 [OU rmd]: OU/secr-simulations-OU.rmd
 [RSF rmd]: RSF/secr-simulations-RSF.rmd

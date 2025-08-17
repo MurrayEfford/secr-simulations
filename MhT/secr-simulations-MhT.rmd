@@ -1,0 +1,235 @@
+---
+title: "**secr** simulations"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Effect of individual heterogeneity in detection parameters $\lambda_0$ and $\sigma$ on trend estimates MhT
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+Variation among individuals in the probability of detection is a known cause of bias in many domains of capture--recapture. However, trend estimates are fairly robust (see Hines and Nichols 2002 for non-spatial scenarios, but "These approximations indicate that trap response is an especially important assumption violation that can produce substantial bias".)
+
+## Problem description
+
+The SECR null model assumes $\lambda_0$ and $\sigma$ are the same across individuals. We generate populations with a multi-session trend in density sampled with heterogeneous $\lambda_0$ and $\sigma$, and examine estimates of density and trend (finite population growth rate $\lambda$) from a null model.
+
+## Settings
+
+Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.  
+
+The same conditions used for simulation and fitting.
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D | $0.5 \sigma^{-2}$ |
+| mean lambda0  | 0.1 |
+| mean sigma    | c/2 |
+| noccasions | 5 |
+| nsessions | 5 |
+| buffer   | $4\sigma$ |
+| nx       | 32 |
+
+## Package version, date and platform
+
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
+source('../setup.R')
+runsim  <- TRUE
+figures <- TRUE
+cache   <- FALSE
+nrepl   <- 200
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
+
+Note: 'grdevice' is set in setup.R to 'ragg_png' allowing graphics on NeSI.
+
+Spatial units changed 2025-08-14: sigma = 1 m, D = 5000/ha
+
+Note: could compare to PLB $\hat \lambda$ by setting renumber = FALSE in sim.popn.
+
+## Simulation code
+
+### Define MhT scenarios
+
+This function draws unique levels of the detection parameter lambda0 from a log-normal distribution for each member of a simulated population when used as the 'covariates' argument of `sim.popn`. 
+```{r popnCV}
+popn.covariates <- function (animals, ...) {
+    arg <- list(...)
+    CVl <- if (is.null(arg$CVlambda0)) 0 else arg$CVlambda0
+    mnl <- arg$lambda0
+    mns <- arg$sigma
+    n <- nrow(animals)
+    data.frame(lambda0 = secr::rlnormCV(n, mnl, CVl), sigma = rep(mns,n)) 
+}
+```
+
+The population arguments passed to run.scenarios include the mean and CV of each detection parameter.
+
+```{r MhT scenarios, eval = TRUE, message = FALSE, results = "hide"}
+grid <- make.grid(nx = 8, ny = 8, spacing = 2, detector = "proximity")
+poparg <- c(
+    expand.arg(
+        covariates = "popn.covariates", 
+        lambda0    = 0.1, 
+        sigma      = 1, 
+        CVlambda0  = seq(0,0.8,0.2), 
+        nsessions = 5,
+        details   = list (lambda = 0.9)),
+    expand.arg(
+        covariates = "popn.covariates", 
+        lambda0    = 0.1, 
+        sigma      = 1, 
+        CVlambda0  = seq(0,0.8,0.2), 
+        nsessions = 5,
+        details   = list (lambda = 1.1)))
+
+detarg <- list(detectpar = list(individual = TRUE))
+trueD <- 5000  # per ha
+scen <- make.scenarios(
+    D          = trueD,
+    noccasions = 5, 
+    detectfn   = 14, 
+    lambda0    = 0.1, 
+    sigma      = 1,        # m
+    popindex   = 1:length(poparg), 
+    fitindex   = 1)
+```
+
+```{r Mh scenario summary, cache = cache}
+scenarioSummary(scen, grid)
+```
+
+### Run MhT simulations
+
+```{r MhT-run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+fitarg <- list(detectfn = 'HHN', model = lambda0 ~ 1, details = list(Dlambda = TRUE))
+MhTsims <- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen, 
+    trapset   = grid, 
+    fit       = TRUE, 
+    pop.args  = poparg, 
+    det.args  = detarg, 
+    fit.args  = fitarg, 
+    seed      = 12345, 
+    xsigma    = 4, 
+    nx        = 32,
+    extractfn = predictDlambda)
+
+saveRDS(MhTsims, file = 'MhTsims.RDS')
+```
+
+```{r MhT readRDS, echo = FALSE}
+MhTsims <- readRDS(file = 'MhTsims.RDS')
+```
+
+MhTsims completed with `r nrepl` replicates on `r nc` threads in `r round(MhTsims$proctime/60,1)` minutes.
+
+```{r test, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+exfn2 <- function (object) {
+    pred <- predict(object)
+    do.call(rbind, lapply(pred, '[',1,))
+}
+fitargo <- list(detectfn = 'HHN', type='PLBsecrl', model = lambda~1)
+PLBsims <- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen[1,], 
+    trapset   = grid, 
+    fit       = TRUE, 
+    fit.function = "openCR.fit", 
+    pop.args  = poparg, 
+    det.args  = detarg, 
+    fit.args  = fitargo, 
+    seed      = 12345, 
+    xsigma    = 4, 
+    nx        = 32,
+    extractfn = exfn2)
+saveRDS(PLBsims, file = 'PLBsims.RDS')
+```
+
+## Results
+
+```{r MhT table, eval = TRUE, echo = FALSE, results = "hold"}
+options(width=110, digits=4)
+MhTsims <- readRDS(file = 'MhTsims.RDS')
+onesim <- function (sim, parm = 'D1', fn = mean) {
+    fn(sapply(sim, '[', parm,'estimate'))
+}
+se <- function(x) sd(x)/sqrt(sum(!is.na(x)))
+nv <- function(x) sum(!is.na(x))
+df <- data.frame(
+    CVlambda0 = rep(seq(0,0.8,0.2),2),
+    lambda    = rep(c(0.9,1.1), each = 5),
+    nvalid    = sapply(MhTsims$output, onesim, 'D1', fn=nv),
+    RBD       = sapply(MhTsims$output, onesim, 'D1', fn=mean) / trueD - 1,
+    seRBD     = sapply(MhTsims$output, FUN = onesim, parm='D1', fn=se) / trueD,
+    lambda    = sapply(MhTsims$output, onesim, 'lambda1'),
+    selambda  = sapply(MhTsims$output, FUN = onesim, parm='lambda1', fn=se) 
+)
+df
+```
+```{r PLB table, eval = TRUE, echo = FALSE, results = "hold"}
+PLBsims <- readRDS(file = 'PLBsims.RDS')
+dfPLB <- data.frame(
+    CVlambda0 = rep(seq(0,0.8,0.2),2),
+    truelambda = rep(c(0.9,1.1), each = 5),
+    lambda = sapply(PLBsims$output, onesim, 'lambda'),
+    selambda = sapply(PLBsims$output, FUN = onesim, parm='lambda', fn=se) 
+)
+dfPLB
+```
+ 
+```{r MhT figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given individual variation" }
+MhTsims <- readRDS(file = 'MhTsims.RDS')
+cvltext <- expression(paste("CV( ", lambda[0], " )"))
+x <- seq(0,0.8,0.20)
+offset <- 0.005
+par(mfrow=c(1,2), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o')
+
+plot(0,0,type='n', xlim=c(0,0.8), ylim=c(-0.4,0.4), xlab = cvltext, ylab='RB')
+abline(h=0, lty=2)
+addRB(x-offset, df[1:5,], mean='RBD', se='seRBD', type='o', pch=16)
+addRB(x+offset, df[6:10,], mean='RBD', se='seRBD', type='o', pch=1)
+
+plot(0,0,type='n', xlim=c(0,0.8), ylim=c(0.7,1.3), xlab = cvltext, ylab='lambda-hat')
+abline(h=0.9, lty=2)
+abline(h=1.1, lty=2)
+addRB(x-offset, df[1:5,],mean='lambda', se='selambda', type='o', pch=16)
+addRB(x+offset, df[6:10,], mean='lambda', se='selambda', type='o', pch=1)
+```
+```{r PLB figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given individual variation" }
+PLBsims <- readRDS(file = 'PLBsims.RDS')
+cvltext <- expression(paste("CV( ", lambda[0], " )"))
+x <- seq(0,0.8,0.20)
+offset <- 0.005
+par(mfrow=c(1,2), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o')
+
+plot(0,0,type='n', xlim=c(0,0.8), ylim=c(0.7,1.3), xlab = cvltext, ylab='lambda-hat')
+abline(h=0.9, lty=2)
+abline(h=1.1, lty=2)
+addRB(x-offset, dfPLB[1:5,],mean='lambda', se='selambda', type='o', pch=16)
+addRB(x+offset, dfPLB[6:10,], mean='lambda', se='selambda', type='o', pch=1)
+```
+
+## Interpretation
+
+Estimates of density from the null model are moderately sensitive to individual variation in $\lambda_0$, but estimates of population trend $\lambda$ are unbiased.
+
+## References
+
+Hines, J. E. and Nichols, J. D. 2002. Investigations of potential bias in the estimation of $\lambda$ using Pradel's (1996) model for capture--recapture data. Journal of Applied Statistics 29: 573--587.
+
+Nichols, J. D. and Hines, J. E. 2002. Approaches for the direct estimation of $\lambda$, and demographic contributions to $\lambda$, using capture--recapture data, Journal of Applied Statistics 29: 539--568.

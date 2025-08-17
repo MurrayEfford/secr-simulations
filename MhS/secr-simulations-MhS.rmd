@@ -1,0 +1,211 @@
+---
+title: "**secr** simulations MhS"
+author: "Murray Efford"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[utf8]{inputenc}
+output:
+  html_document:
+    theme: united
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+    toc_depth: 4
+  word_document: default
+---
+
+# Effect of individual heterogeneity in detection parameter $\lambda_0$ on spatial trend estimates MhS
+
+The simulations described here are part of a series documenting the effect of 
+breaching assumptions of spatially explicit capture--recapture models.
+
+Variation among individuals in the probability of detection is a known cause of bias in many domains of capture--recapture. However, trend estimates are fairly robust (see Hines and Nichols 2002 for non-spatial scenarios, but "These approximations indicate that trap response is an especially important assumption violation that can produce substantial bias".)
+
+## Problem description
+
+The SECR null model assumes $\lambda_0$ and $\sigma$ are the same across individuals. We generate populations with a multi-session trend in density sampled with heterogeneous $\lambda_0$, and examine estimates of density trend with respect to a covariate, the intensity surface used to generate the data.
+
+## Settings
+
+Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.  
+
+The same conditions used for simulation and fitting.
+
+| Parameter | Value(s) |
+|:-----|:-----------------------|
+| detectfn | 'HHN' |
+| D | $0.5 \sigma^{-2}$ |
+| mean lambda0  | 0.2 |
+| mean sigma    | c/2 |
+| noccasions | 5 |
+| buffer   | $4\sigma$ |
+| nx       | 32 |
+
+## Package version, date and platform
+
+```{r startup, warning = FALSE, message = FALSE, results = "hold"}
+source('../setup.R')
+runsim  <- FALSE
+results <- TRUE
+figures <- TRUE
+cache   <- FALSE
+nrepl   <- 1000
+metadata(runsim) # if FALSE picks up saved metadata.RDS
+```
+
+Note: 'grdevice' is set in setup.R to 'ragg_png' allowing graphics on NeSI.
+
+Spatial units changed 2025-08-14: sigma = 1 m, D = 5000/ha
+
+## Simulation code
+
+### Define MhS scenarios
+
+This function draws unique levels of the detection parameter lambda0 from a log-normal distribution for each member of a simulated population when used as the 'covariates' argument of `sim.popn`. 
+```{r popnCV}
+popn.covariates <- function (animals, ...) {
+    arg <- list(...)
+    CVl <- if (is.null(arg$CVlambda0)) 0 else arg$CVlambda0
+    mnl <- arg$lambda0
+    mns <- arg$sigma
+    n <- nrow(animals)
+    data.frame(lambda0 = secr::rlnormCV(n, mnl, CVl), sigma = rep(mns,n)) 
+}
+```
+
+The population arguments passed to run.scenarios include the mean and CV of each detection parameter.
+
+```{r MhS scenarios, eval = TRUE, message = FALSE, results = "hide"}
+grid <- make.grid(nx = 8, ny = 8, spacing = 2, detector = "proximity")
+poparg <- expand.arg(
+        model2D = 'rLGCP',
+        covariates = "popn.covariates", 
+        lambda0    = 0.2, 
+        sigma      = 1, 
+        CVlambda0  = seq(0,0.8,0.2)
+)
+
+for (i in 1:5) poparg[[i]]$details <- list(var=1, scale = 20, saveLambda = TRUE)
+
+trueD <- 5000  # per ha
+scen <- make.scenarios(
+    D          = trueD,
+    noccasions = 5, 
+    detectfn   = 14, 
+    lambda0    = 0.2, 
+    sigma      = 1,        # m
+    popindex   = 1:length(poparg), 
+    fitindex   = 1)
+```
+
+```{r Mh scenario summary, cache = cache}
+scenarioSummary(scen, grid)
+```
+
+### Example
+
+```{r example, warning = FALSE}
+set.seed(12345)
+msk <- make.mask(grid, buffer=4)
+pop <- sim.popn(D = 5000, core = msk, buffer = 0, model2D = "rLGCP", 
+                details = list(var = 1, scale = 20, saveLambda = TRUE))
+ch <- sim.capthist(grid, popn = pop, detectpar = list(lambda0 = 0.1, sigma = 1), 
+                   noccasions = 5, detectfn = 14, savepopn = TRUE)
+msk <- addCovariates(msk, attr(attr(ch,'popn'),'Lambda'), replace = TRUE)
+covariates(msk)$loglam <-  log(covariates(msk)$Lambda)
+```
+
+```{r exampleplot, eval = TRUE, fig.cap = 'Fig. 1. Realisation of LGCP intensity surface and simulated AC locations.'}
+par(mar = c(1,1,1,4))
+plot(msk, cov = 'loglam', dots = FALSE, border = 1)
+plot(pop, cex = 0.5, frame = FALSE, add = TRUE)
+plot(grid, add = TRUE)
+```
+
+### Run MhS simulations
+
+```{r MhS-run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+# clunky way to add loglam = log(Lambda) as mask covariate
+# run.scenarios adds covariates of saved Lambda mask to fitarg$mask (secrdesign>2025-08-16)
+CHfn <- function(traps, popn, detectfn, detectpar, noccasions) {
+    ch <- sim.capthist(traps, popn, detectfn, detectpar, noccasions, savepopn=TRUE)
+    tmp <- attr(attr(ch,'popn'),'Lambda')
+    covariates(tmp)$loglam <- log(covariates(tmp)$Lambda)
+    attr(attr(ch,'popn'),'Lambda') <- tmp
+    ch
+}
+fitarg <- list(detectfn = 'HHN', CL = TRUE, model = list(lambda0 ~ 1, D~loglam))
+mycoef <- function(object, ...) {
+  emptycoef <- function (rownames) {
+    nr <- length(rownames)
+    rNA <- rep(NA, nr)
+    data.frame(beta = rNA, SE.beta = rNA, lcl = rNA, ucl = rNA, row.names = rownames)
+  }
+  if (inherits(object, 'secr')) coef(object)
+  else emptycoef(c('D.loglam','lambda0','sigma'))
+}
+MhSsims <- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen, 
+    trapset   = grid, 
+    fit       = TRUE, 
+    pop.args  = poparg, 
+    CH.function = "CHfn",
+    fit.args  = fitarg, 
+    seed      = 12345, 
+    xsigma    = 4, 
+    nx        = 32,
+    extractfn = mycoef)
+
+saveRDS(MhSsims, file = 'MhSsims.RDS')
+```
+
+```{r MhS readRDS, echo = FALSE}
+MhSsims <- readRDS(file = 'MhSsims.RDS')
+```
+
+MhSsims completed with `r nrepl` replicates on `r nc` threads in `r round(MhSsims$proctime/60,1)` minutes.
+
+## Results
+
+```{r MhS table, eval = results, echo = TRUE, results = "hold"}
+options(width = 110, digits = 4)
+MhSsims <- readRDS(file = 'MhSsims.RDS')
+onesim <- function (sim, parm = 'D1', fn = mn) {
+    fn(sapply(sim, '[', parm,'beta'))
+}
+mn <- function(x) mean(x, na.rm=TRUE)
+se <- function(x) sd(x, na.rm=TRUE)/sqrt(sum(!is.na(x)))
+nv <- function(x) sum(!is.na(x))
+df <- data.frame(
+    CVlambda0 = seq(0,0.8,0.2),
+    nvalid    = sapply(MhSsims$output, onesim, 'D.loglam', fn=nv),
+    D.loglam  = sapply(MhSsims$output, onesim, 'D.loglam', fn=mn),
+    biasbeta  = sapply(MhSsims$output, onesim, 'D.loglam', fn=mn) - 1,
+    sebeta    = sapply(MhSsims$output, FUN = onesim, parm='D.loglam', fn=se)
+)
+df
+```
+
+```{r MhS figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Fig. 2. Relative bias of loglam beta estimate given individual variation" }
+MhSsims <- readRDS(file = 'MhSsims.RDS')
+cvltext <- expression(paste("CV( ", lambda[0], " )"))
+x <- seq(0,0.8,0.20)
+offset <- 0.005
+par(mfrow = c(1,1), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', pty = 's')
+plot(0,0, type = 'n', xlim = c(0,0.8), ylim = c(-0.4,0.4), 
+     xlab = cvltext, ylab = 'Bias(D.loglam)')
+abline(h = 0, lty = 2)
+addRB(x-offset, df[1:5,], mean = 'biasbeta', se = 'sebeta', type = 'o', pch = 16)
+```
+
+## Interpretation
+
+Estimates of coefficient for density-loglam relationship are insensitive to individual variation in $\lambda_0$.
+
+## References
+
+Hines, J. E. and Nichols, J. D. 2002. Investigations of potential bias in the estimation of $\lambda$ using Pradel's (1996) model for capture--recapture data. Journal of Applied Statistics 29: 573--587.
+
+Nichols, J. D. and Hines, J. E. 2002. Approaches for the direct estimation of $\lambda$, and demographic contributions to $\lambda$, using capture--recapture data, Journal of Applied Statistics 29: 539--568.

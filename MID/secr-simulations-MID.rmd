@@ -178,6 +178,28 @@ MIDsims2 <- run.scenarios(
 saveRDS(MIDsims2, file = 'MIDsims2.RDS')
 ```
 
+What percentage of individuals were ghosts? 
+```{r}
+fn <- function(ch) {
+    c(n = nrow(ch), 
+     nghost = sum(grepl('N',rownames(ch))),
+     pctghost = sum(grepl('N',rownames(ch))) / nrow(ch) * 100)
+}
+MIDsims2pg <- run.scenarios(
+    nrepl       = 1000, 
+    scenarios   = scen2, 
+    trapset     = grid, 
+    det.args    = detarg2, 
+    fit         = FALSE, 
+    seed        = 1234, 
+    extractfn   = fn,
+    CH.function = "simMID.capthist")
+rbind(
+sapply(MIDsims2pg$output, apply, 2, mean),
+t(attr(detarg2, "comb"))
+)
+```
+
 ```{r MID3-scen, eval = TRUE, message = FALSE, warning = FALSE, results = "hide"}
 detarg3 <- expand.arg(PI = c(0.00, 10^(seq(-5,-2,0.5))))
 scen3 <- make.scenarios(D = 12.5, noccasions = 10, detectfn = 14, 
