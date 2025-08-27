@@ -46,7 +46,7 @@ The same conditions used for simulation and fitting.
 
 ```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim  <- FALSE
+runsim  <- TRUE
 results <- TRUE
 figures <- TRUE
 cache   <- FALSE
@@ -79,7 +79,8 @@ The population arguments passed to run.scenarios include the mean and CV of each
 ```{r MhS scenarios, eval = TRUE, message = FALSE, results = "hide"}
 grid <- make.grid(nx = 8, ny = 8, spacing = 2, detector = "proximity")
 poparg <- expand.arg(
-        model2D = 'rLGCP',
+        model2D    = 'rLGCP',
+        Ndist      = 'fixed',
         covariates = "popn.covariates", 
         lambda0    = 0.2, 
         sigma      = 1, 
@@ -118,8 +119,8 @@ covariates(msk)$loglam <-  log(covariates(msk)$Lambda)
 
 ```{r exampleplot, eval = TRUE, fig.cap = 'Fig. 1. Realisation of LGCP intensity surface and simulated AC locations.'}
 par(mar = c(1,1,1,4))
-plot(msk, cov = 'loglam', dots = FALSE, border = 1)
-plot(pop, cex = 0.5, frame = FALSE, add = TRUE)
+plot(msk, cov = 'loglam', dots = F, border = 1)
+plot(pop, cex = 0.5, pch = 16, frame = FALSE, add = TRUE)
 plot(grid, add = TRUE)
 ```
 
@@ -129,7 +130,8 @@ plot(grid, add = TRUE)
 # clunky way to add loglam = log(Lambda) as mask covariate
 # run.scenarios adds covariates of saved Lambda mask to fitarg$mask (secrdesign>2025-08-16)
 CHfn <- function(traps, popn, detectfn, detectpar, noccasions) {
-    ch <- sim.capthist(traps, popn, detectfn, detectpar, noccasions, savepopn=TRUE)
+    ch <- sim.capthist(traps, popn, detectfn, detectpar = list(individual = TRUE), 
+                       noccasions, savepopn = TRUE)
     tmp <- attr(attr(ch,'popn'),'Lambda')
     covariates(tmp)$loglam <- log(covariates(tmp)$Lambda)
     attr(attr(ch,'popn'),'Lambda') <- tmp
@@ -142,8 +144,14 @@ mycoef <- function(object, ...) {
     rNA <- rep(NA, nr)
     data.frame(beta = rNA, SE.beta = rNA, lcl = rNA, ucl = rNA, row.names = rownames)
   }
-  if (inherits(object, 'secr')) coef(object)
-  else emptycoef(c('D.loglam','lambda0','sigma'))
+  if (inherits(object, 'secr')) {
+      Dhat <- mean(covariates(derivedDsurface(object))$D.0)
+      cvn <- CV(apply(object$capthist,1,sum))
+      out <- rbind(derivedDcoef(object), cvn = cvn,  Dhat = Dhat, RBD = (Dhat - trueD)/trueD)
+      out[5:7, 2:4] <- NA
+      out
+  }
+  else emptycoef(c('D', 'D.loglam', 'lambda0', 'sigma', 'cvn','Dhat','RBD'))
 }
 MhSsims <- run.scenarios(
     nrepl     = nrepl, 
@@ -180,24 +188,36 @@ se <- function(x) sd(x, na.rm=TRUE)/sqrt(sum(!is.na(x)))
 nv <- function(x) sum(!is.na(x))
 df <- data.frame(
     CVlambda0 = seq(0,0.8,0.2),
-    nvalid    = sapply(MhSsims$output, onesim, 'D.loglam', fn=nv),
-    D.loglam  = sapply(MhSsims$output, onesim, 'D.loglam', fn=mn),
-    biasbeta  = sapply(MhSsims$output, onesim, 'D.loglam', fn=mn) - 1,
-    sebeta    = sapply(MhSsims$output, FUN = onesim, parm='D.loglam', fn=se)
+    nvalid    = sapply(MhSsims$output, onesim, 'D.loglam', fn = nv),
+    D         = sapply(MhSsims$output, onesim, 'D',        fn = mn),
+    seD       = sapply(MhSsims$output, onesim, 'D',        fn = se),
+    Dloglam   = sapply(MhSsims$output, onesim, 'D.loglam', fn = mn)-1,
+    seDloglam = sapply(MhSsims$output, onesim, 'D.loglam', fn = se),
+    cvn       = sapply(MhSsims$output, onesim, 'cvn',      fn = mn),
+    Dhat      = sapply(MhSsims$output, onesim, 'Dhat',     fn = mn),
+    RBD       = sapply(MhSsims$output, onesim, 'RBD',      fn = mn),
+    seRBD     = sapply(MhSsims$output, onesim, 'RBD',      fn = se)
 )
 df
 ```
 
-```{r MhS figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Fig. 2. Relative bias of loglam beta estimate given individual variation" }
-MhSsims <- readRDS(file = 'MhSsims.RDS')
+```{r MhS figure, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Fig. 2. Relative bias of loglam beta estimate given individual variation" }
 cvltext <- expression(paste("CV( ", lambda[0], " )"))
 x <- seq(0,0.8,0.20)
+par(mfrow = c(1,1), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', pty = 's', las = 0)
 offset <- 0.005
-par(mfrow = c(1,1), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', pty = 's')
-plot(0,0, type = 'n', xlim = c(0,0.8), ylim = c(-0.4,0.4), 
-     xlab = cvltext, ylab = 'Bias(D.loglam)')
+plot(0,0, type = 'n', xlim = c(0,0.8), ylim = c(-0.3,0.2), 
+     xlab = cvltext, ylab = '')
+axis(4, las=1)
+mtext(side=2, expression(paste('Bias ', ~~hat(beta[1]))), line = 2, las=0)
+mtext(side=4, expression(paste('Relative bias ', ~~italic(hat(D)))), line = 2.4, las = 0)
 abline(h = 0, lty = 2)
-addRB(x-offset, df[1:5,], mean = 'biasbeta', se = 'sebeta', type = 'o', pch = 16)
+addRB(x-offset, df, mean = 'RBD', se = 'seRBD', type = 'o', pch = 21, bg = 'white')
+addRB(x+offset, df, mean = 'Dloglam', se = 'seDloglam', type = 'o', pch = 16)
+
+legend ('topright', legend = c(expression(italic(hat(beta[1]))), 
+                               expression(italic(hat(D)))), 
+        pch=c(16,21), pt.bg = 'white', lty = 1)
 ```
 
 ## Interpretation
