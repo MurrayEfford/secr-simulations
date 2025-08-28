@@ -30,7 +30,7 @@ The SECR null model assumes $\lambda_0$ and $\sigma$ are the same across individ
 
 Square grid of 64 binary proximity detectors at spacing $c = 2\sigma$.  
 
-The same conditions used for simulation and fitting.
+The same conditions were used for simulation and fitting.
 
 | Parameter | Value(s) |
 |:-----|:-----------------------|
@@ -47,18 +47,20 @@ The same conditions used for simulation and fitting.
 
 ```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
-runsim  <- TRUE
+runsim  <- FALSE
+runsim2 <- FALSE
 figures <- TRUE
 cache   <- FALSE
 nrepl   <- 200
-metadata(runsim) # if FALSE picks up saved metadata.RDS
+nrepl2  <- 25
+metadata(runsim, runsim2) # if runsim FALSE picks up saved metadata.RDS
 ```
 
 Note: 'grdevice' is set in setup.R to 'ragg_png' allowing graphics on NeSI.
 
 Spatial units changed 2025-08-14: sigma = 1 m, D = 5000/ha
 
-Note: could compare to PLB $\hat \lambda$ by setting renumber = FALSE in sim.popn.
+Note: could compare to PLB $\hat \lambda$ by setting renumber = FALSE in sim.capthist.
 
 ## Simulation code
 
@@ -96,7 +98,7 @@ poparg <- c(
         nsessions = 5,
         details   = list (lambda = 1.1)))
 
-detarg <- list(detectpar = list(individual = TRUE))
+detarg <- list(detectpar = list(individual = TRUE), renumber = FALSE)
 trueD <- 5000  # per ha
 scen <- make.scenarios(
     D          = trueD,
@@ -132,27 +134,38 @@ MhTsims <- run.scenarios(
 saveRDS(MhTsims, file = 'MhTsims.RDS')
 ```
 
-```{r MhT readRDS, echo = FALSE}
-MhTsims <- readRDS(file = 'MhTsims.RDS')
+```{r MhTCL-run, eval = runsim2, cache = cache, warning = FALSE, message = FALSE}
+fitarg <- list(detectfn = 'HHN', model = list(D~1, lambda0 ~ 1), CL = TRUE, details = list(Dlambda = TRUE))
+MhTCLsims <- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen, 
+    trapset   = grid, 
+    fit       = TRUE, 
+    pop.args  = poparg, 
+    det.args  = detarg, 
+    fit.args  = fitarg, 
+    seed      = 12345, 
+    xsigma    = 4, 
+    nx        = 32,
+    extractfn = predictDlambda)
+
+saveRDS(MhTCLsims, file = 'MhTCLsims.RDS')
 ```
-
-MhTsims completed with `r nrepl` replicates on `r nc` threads in `r round(MhTsims$proctime/60,1)` minutes.
-
 ```{r test, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
 exfn2 <- function (object) {
     pred <- predict(object)
     do.call(rbind, lapply(pred, '[',1,))
 }
-fitargo <- list(detectfn = 'HHN', type='PLBsecrl', model = lambda~1)
+fitarg2 <- list(detectfn = 'HHN', type='PLBsecrl', model = lambda~1)
 PLBsims <- run.scenarios(
-    nrepl     = nrepl, 
-    scenarios = scen[1,], 
+    nrepl     = nrepl2, 
+    scenarios = scen, 
     trapset   = grid, 
     fit       = TRUE, 
     fit.function = "openCR.fit", 
     pop.args  = poparg, 
     det.args  = detarg, 
-    fit.args  = fitargo, 
+    fit.args  = fitarg2, 
     seed      = 12345, 
     xsigma    = 4, 
     nx        = 32,
@@ -160,68 +173,109 @@ PLBsims <- run.scenarios(
 saveRDS(PLBsims, file = 'PLBsims.RDS')
 ```
 
+```{r MhT readRDS, echo = FALSE}
+MhTsims <- readRDS(file = 'MhTsims.RDS')
+MhTCLsims <- readRDS(file = 'MhTCLsims.RDS')
+PLBsims <- readRDS(file = 'PLBsims.RDS')
+```
+
+MhTsims completed with `r nrepl` replicates on `r nc` threads in `r round(MhTsims$proctime/60,1)` minutes.
+MhTCLsims completed with `r nrepl` replicates on `r nc` threads in `r round(MhTCLsims$proctime/60,1)` minutes.
+PLBsims completed with `r nrepl2` replicates on `r nc` threads in `r round(PLBsims$proctime/60,1)` minutes.
+
 ## Results
 
-```{r MhT table, eval = TRUE, echo = FALSE, results = "hold"}
+```{r MhT table, eval = TRUE, echo = TRUE, results = "hold"}
 options(width=110, digits=4)
 MhTsims <- readRDS(file = 'MhTsims.RDS')
-onesim <- function (sim, parm = 'D1', fn = mean) {
-    fn(sapply(sim, '[', parm,'estimate'))
+onesim <- function (sim, parm = 'D1', fn = mean, field = 'estimate') {
+    fn(sapply(sim, '[', parm,field))
 }
+mn <- function(x) mean(x, na.rm = TRUE)
 se <- function(x) sd(x)/sqrt(sum(!is.na(x)))
 nv <- function(x) sum(!is.na(x))
 df <- data.frame(
     CVlambda0 = rep(seq(0,0.8,0.2),2),
     lambda    = rep(c(0.9,1.1), each = 5),
     nvalid    = sapply(MhTsims$output, onesim, 'D1', fn=nv),
-    RBD       = sapply(MhTsims$output, onesim, 'D1', fn=mean) / trueD - 1,
-    seRBD     = sapply(MhTsims$output, FUN = onesim, parm='D1', fn=se) / trueD,
+    RBD       = sapply(MhTsims$output, onesim, 'D1', fn=mn) / trueD - 1,
+    seRBD     = sapply(MhTsims$output, onesim, 'D1', fn=se) / trueD,
     lambda    = sapply(MhTsims$output, onesim, 'lambda1'),
-    selambda  = sapply(MhTsims$output, FUN = onesim, parm='lambda1', fn=se) 
+    selambda  = sapply(MhTsims$output, onesim, 'lambda1', fn=se),
+    SEestlam  = sapply(MhTsims$output, onesim, 'lambda1', fn=mn, field = 'SE.estimate')
 )
 df
 ```
-```{r PLB table, eval = TRUE, echo = FALSE, results = "hold"}
+Also tabulate conditional fits:
+```{r MhTCL table, eval = TRUE, echo = TRUE, results = "hold"}
+options(width=110, digits=4)
+MhTCLsims <- readRDS(file = 'MhTCLsims.RDS')
+onesim <- function (sim, parm = 'D1', fn = mean, field = 'estimate') {
+    fn(sapply(sim, '[', parm,field))
+}
+mn <- function(x) mean(x, na.rm = TRUE)
+se <- function(x) sd(x)/sqrt(sum(!is.na(x)))
+nv <- function(x) sum(!is.na(x))
+dfCL <- data.frame(
+    CVlambda0 = rep(seq(0,0.8,0.2),2),
+    lambda    = rep(c(0.9,1.1), each = 5),
+    nvalid    = sapply(MhTCLsims$output, onesim, 'lambda1', fn=nv),
+    lambda    = sapply(MhTCLsims$output, onesim, 'lambda1', fn=mn),
+    selambda  = sapply(MhTCLsims$output, onesim, 'lambda1', fn=se),
+    SEestlam  = sapply(MhTCLsims$output, onesim, 'lambda1', fn=mn, field = 'SE.estimate')
+)
+dfCL
+```
+
+```{r PLB table, eval = TRUE, echo = TRUE, results = "hold"}
 PLBsims <- readRDS(file = 'PLBsims.RDS')
 dfPLB <- data.frame(
     CVlambda0 = rep(seq(0,0.8,0.2),2),
     truelambda = rep(c(0.9,1.1), each = 5),
     lambda = sapply(PLBsims$output, onesim, 'lambda'),
-    selambda = sapply(PLBsims$output, FUN = onesim, parm='lambda', fn=se) 
+    selambda = sapply(PLBsims$output, onesim, 'lambda', fn=se),
+    SEestlam  = sapply(PLBsims$output, onesim, 'lambda', fn=mn, field = 'SE.estimate')
 )
 dfPLB
 ```
  
-```{r MhT figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given individual variation" }
-MhTsims <- readRDS(file = 'MhTsims.RDS')
+```{r MhT figure, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of density and lambda estimates from null 5-session model given individual variation in lambda0" }
 cvltext <- expression(paste("CV( ", lambda[0], " )"))
 x <- seq(0,0.8,0.20)
 offset <- 0.005
-par(mfrow=c(1,2), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o')
+par(mfrow = c(1,2), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o')
 
-plot(0,0,type='n', xlim=c(0,0.8), ylim=c(-0.4,0.4), xlab = cvltext, ylab='RB')
-abline(h=0, lty=2)
-addRB(x-offset, df[1:5,], mean='RBD', se='seRBD', type='o', pch=16)
-addRB(x+offset, df[6:10,], mean='RBD', se='seRBD', type='o', pch=1)
+plot(0,0, type = 'n', xlim = c(0,0.8), ylim = c(-0.4,0.4), xlab = cvltext, ylab = 'RB(D-hat)')
+abline(h = 0, lty = 2)
+addRB(x-offset, df[1:5,], mean = 'RBD', se = 'seRBD', type = 'o', pch = 16)
+addRB(x+offset, df[6:10,], mean = 'RBD', se = 'seRBD', type = 'o', pch = 1)
 
-plot(0,0,type='n', xlim=c(0,0.8), ylim=c(0.7,1.3), xlab = cvltext, ylab='lambda-hat')
-abline(h=0.9, lty=2)
-abline(h=1.1, lty=2)
-addRB(x-offset, df[1:5,],mean='lambda', se='selambda', type='o', pch=16)
-addRB(x+offset, df[6:10,], mean='lambda', se='selambda', type='o', pch=1)
+plot(0,0, type = 'n', xlim = c(0,0.8), ylim = c(0.7,1.3), xlab = cvltext, ylab = 'lambda-hat')
+abline(h = 0.9, lty = 2)
+abline(h = 1.1, lty = 2)
+addRB(x-offset, df[1:5,], mean = 'lambda', se = 'selambda', type = 'o', pch = 16)
+addRB(x+offset, df[6:10,], mean = 'lambda', se = 'selambda', type = 'o', pch = 1)
 ```
-```{r PLB figure, eval = figures, echo = FALSE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of parameter estimates from null model given individual variation" }
-PLBsims <- readRDS(file = 'PLBsims.RDS')
+```{r PLB figure, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Relative bias of lambda-hat from null PLB open model given individual variation" }
 cvltext <- expression(paste("CV( ", lambda[0], " )"))
 x <- seq(0,0.8,0.20)
 offset <- 0.005
-par(mfrow=c(1,2), mar=c(4,4,1,1), mgp=c(2.4,0.7,0), bty = 'o')
+par(mfrow = c(1,2), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o')
 
-plot(0,0,type='n', xlim=c(0,0.8), ylim=c(0.7,1.3), xlab = cvltext, ylab='lambda-hat')
-abline(h=0.9, lty=2)
-abline(h=1.1, lty=2)
-addRB(x-offset, dfPLB[1:5,],mean='lambda', se='selambda', type='o', pch=16)
-addRB(x+offset, dfPLB[6:10,], mean='lambda', se='selambda', type='o', pch=1)
+plot(0,0, type = 'n', xlim = c(0,0.8), ylim = c(0.7,1.3), xlab = cvltext, ylab = 'lambda-hat')
+abline(h = 0.9, lty = 2)
+abline(h = 1.1, lty = 2)
+addRB(x-offset, dfPLB[1:5,], mean = 'lambda', se = 'selambda', type = 'o', pch = 16)
+addRB(x+offset, dfPLB[6:10,], mean = 'lambda', se = 'selambda', type = 'o', pch = 1)
+```
+
+```{r PLB figure2, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Estimated precision of lambda-hat from multisession SECR and PLB models" }
+par(mfrow = c(1,1), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', pty = 's')
+plot(0,0, type = 'n', xlim = c(0.03,0.045), ylim = c(0.03,0.045), 
+     xlab = 'SE lambda-hat (MS SECR)', ylab = 'SE lambda-hat PLB')
+points(df[1:10,'SEestlam'], dfPLB[1:10,'SEestlam'], type = 'p', pch = 16)
+abline(0,1)
+mean(df[1:10,'SEestlam'] / dfPLB[1:10,'SEestlam'])
 ```
 
 ## Interpretation
