@@ -161,7 +161,7 @@ MhSsims <- run.scenarios(
     pop.args  = poparg, 
     CH.function = "CHfn",
     fit.args  = fitarg, 
-    seed      = 12345, 
+    seed      = 123457, 
     xsigma    = 4, 
     nx        = 32,
     extractfn = mycoef)
