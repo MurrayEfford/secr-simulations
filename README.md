@@ -1,7 +1,5 @@
 # Spatially Explicit Capture--Recapture Simulations
 
-SITE UNDER DEVELOPMENT - RESULTS MAY CHANGE AND SOME DETAILS HAVE TO BE CHECKED
-
 This site holds R code and results for simulations to assess the robustness of spatially explicit capture--recapture estimates of population density to various breaches of model assumptions. Results are used in [Efford (2025)](https://murrayefford.github.io/SECRbook/).
 
 All simulations were conducted in the R package **secrdesign** and SECR models were fitted by maximum likelihood in R package **secr**. Some shared code and other detail is given in the file 'setup.R' in the root folder.
