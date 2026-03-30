@@ -46,6 +46,7 @@ The same conditions used for simulation and fitting.
 
 ```{r startup, warning = FALSE, message = FALSE, results = "hold"}
 source('../setup.R')
+library(fields)  # for Gaussian random field
 runsim  <- FALSE
 results <- TRUE
 figures <- TRUE
@@ -168,23 +169,26 @@ mycoef <- function(object, ...) {
     data.frame(beta = rNA, SE.beta = rNA, lcl = rNA, ucl = rNA, row.names = rownames)
   }
   if (inherits(object, 'secr')) {
+      Dbar <- mean(covariates(object$mask)$D)
     if (object$CL) {
       Dhat <- mean(covariates(derivedDsurface(object))$D.0)
+      RBD  <- (Dhat-Dbar)/Dbar
       cvn <- CV(apply(object$capthist,1,sum))
       time <- object$proctime
-      out <- rbind(derivedDcoef(object), cvn = cvn,  Dhat = Dhat, time = time)
+      out <- rbind(derivedDcoef(object), cvn = cvn,  Dbar = Dbar, Dhat = Dhat, RBD = RBD, time = time)
       out[5:7, 2:4] <- NA
     }
     else {
       Dhat <- mean(covariates(predictDsurface(object))$D.0)
+      RBD  <- (Dhat-Dbar)/Dbar
       cvn <- CV(apply(object$capthist,1,sum))
       time <- object$proctime
-      out <- rbind(coef(object), cvn = cvn,  Dhat = Dhat, time = time)
+      out <- rbind(coef(object), cvn = cvn,  Dbar = Dbar, Dhat = Dhat, RBD = RBD, time = time)
       out[5:7, 2:4] <- NA
     }
       out
   }
-  else emptycoef(c('D', 'D.grf', 'lambda0', 'sigma', 'cvn','Dhat','time'))
+  else emptycoef(c('D', 'D.grf', 'lambda0', 'sigma', 'cvn', 'Dbar', 'Dhat','RBD','time'))
 }
 exfn <- function (fits, vcv = FALSE, ...) {
   # fits is secrlist
@@ -234,7 +238,10 @@ onefit <- function(fit = 1) {
         Dgrf      = sapply(MhSsims$output, onesim, 'D.grf',    fn = mn)-beta1,
         seDgrf    = sapply(MhSsims$output, onesim, 'D.grf',    fn = se),
         cvn       = sapply(MhSsims$output, onesim, 'cvn',      fn = mn),
+        Dbar      = sapply(MhSsims$output, onesim, 'Dbar',     fn = mn),
         Dhat      = sapply(MhSsims$output, onesim, 'Dhat',     fn = mn),
+        RBD       = sapply(MhSsims$output, onesim, 'RBD',      fn = mn),
+        seRBD     = sapply(MhSsims$output, onesim, 'RBD',      fn = se),
         time      = sapply(MhSsims$output, onesim, 'time',     fn = mn),
         setime    = sapply(MhSsims$output, onesim, 'time',     fn = se)
     )
@@ -258,6 +265,23 @@ addRB(x+offset, onefit(1), mean = 'Dgrf', se = 'seDgrf', type = 'o', pch = 16)
 legend ('topright', legend = c(expression(italic(hat(beta[1]))), 
                                expression(italic(hat(beta[0])))), 
         pch=c(16,21), pt.bg = 'white', lty = 1)
+```
+
+```{r MhS figure RBD, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Fig. 3. Relative bias of density estimates given individual variation" }
+cvltext <- expression(paste("CV( ", lambda[0], " )"))
+x <- seq(0,0.8,0.20)
+par(mfrow = c(1,1), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', pty = 's', las = 0)
+offset <- 0.005
+plot(0,0, type = 'n', xlim = c(0,0.8), ylim = c(-0.3,0.2), 
+     xlab = cvltext, ylab = '', las=1)
+mtext(side=2, 'Estimated relative bias', line = 2.5, las=0)
+abline(h = 0, lty = 2)
+addRB(x+offset, onefit(1), mean = 'RBD', se = 'seRBD', type = 'o', pch = 16)
+addRB(x-offset, onefit(2), mean = 'RBD', se = 'seRBD', type = 'o', pch = 21, bg = 'white')
+
+legend ('topright', legend = c(expression(italic(hat(D)) ~~ 'derived'), 
+                               expression(italic(hat(D)) ~~ 'full')), 
+                               pch=c(16,21), pt.bg = 'white', lty = 1, y.intersp=1.3)
 ```
 
 ```{r timing}

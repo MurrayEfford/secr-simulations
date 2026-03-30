@@ -23,7 +23,7 @@
 ## -- knit R Markdown file
 
 library(secrdesign)
-nc <- setNumThreads(min(parallel::detectCores(), 40))
+nc <- setNumThreads(min(parallel::detectCores(), 20))
 options(digits = 5)      # for more readable output
 options(width = 100)
 
