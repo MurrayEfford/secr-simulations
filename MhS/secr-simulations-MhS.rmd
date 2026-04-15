@@ -22,6 +22,8 @@ breaching assumptions of spatially explicit capture--recapture models.
 
 Variation among individuals in the probability of detection is a known cause of bias in many domains of capture--recapture. However, trend estimates are fairly robust (see Hines and Nichols 2002 for non-spatial scenarios, but "These approximations indicate that trap response is an especially important assumption violation that can produce substantial bias".)
 
+MhS was extended 2026-04-02 to include a fit with individual covariates. These results are saved in a separate object MhSsims2.
+
 ## Problem description
 
 The SECR null model assumes $\lambda_0$ and $\sigma$ are the same across individuals. We generate populations with a multi-session trend in density sampled with heterogeneous $\lambda_0$, and examine estimates of density trend with respect to a covariate, the intensity surface used to generate the data.
@@ -48,12 +50,18 @@ The same conditions used for simulation and fitting.
 source('../setup.R')
 library(fields)  # for Gaussian random field
 runsim  <- FALSE
+runsim2 <- FALSE
+runsim3 <- TRUE
 results <- TRUE
 figures <- TRUE
 cache   <- FALSE
 nrepl   <- 2000
+nrepl2  <- 500
+nrepl3  <- 50
 metadata(runsim) # if FALSE picks up saved metadata.RDS
 ```
+
+Number of threads is set in setup.R.
 
 Note: 'grdevice' is set in setup.R to 'ragg_png' allowing graphics on NeSI.
 
@@ -108,7 +116,7 @@ for (i in 1:5) {
 }
 
 scen <- make.scenarios(
-    D          = 10000,   # approx!
+    D          = 10000,   # approximate! overridden by grf
     noccasions = 5, 
     detectfn   = 14, 
     lambda0    = 0.2, 
@@ -118,6 +126,8 @@ scen <- make.scenarios(
 ```
 
 ```{r Mh scenario summary, cache = cache}
+# warning: this summary relates to a constant density of 10000
+# different counts result from the modelled grf density
 grid <- make.grid(nx = 10, ny = 10, spacing = 2, detector = "proximity")
 scenarioSummary(scen, grid)
 ```
@@ -143,25 +153,19 @@ plot(grid, add = TRUE)
 
 Package 'fields' offers function circulantEmbedding() to generate a Gaussian random field.
 
-```{r MhS-run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+```{r MhS-setup, eval = TRUE, cache = cache, warning = FALSE, message = FALSE}
 # clunky way to add grf as mask covariate
 # run.scenarios adds covariates of mask saved from sim.popn() to fitarg$mask (secrdesign>2025-08-16)
 CHfn <- function(traps, popn, detectfn, detectpar, noccasions) {
     ch <- sim.capthist(traps, popn, detectfn, detectpar = list(individual = TRUE), 
-                       noccasions, savepopn = TRUE)
+                       noccasions, savepopn = TRUE, renumber = FALSE)
+    covariates(ch)$lam <- covariates(popn)[rownames(ch),]$lambda0
+    ch <- binCovariate(ch, 'lam', width = 0.05)
     tmp <- attr(attr(ch,'popn'),'mask')
     covariates(tmp)$grf <- attr(covariates(tmp)$D, 'grf')
     attr(attr(ch,'popn'),'mask') <- tmp
     ch
 }
-fitarg   <- list(
-  list (
-    list(detectfn = 'HHN', CL = TRUE,  model = list(lambda0 ~ 1, D~grf)),
-    list(detectfn = 'HHN', CL = FALSE, model = list(lambda0 ~ 1, D~grf)),
-    list(detectfn = 'HHN', CL = FALSE, model = list(lambda0 ~ 1, D~grf), details = list(distribution = "binomial"))
-  )
-)
-
 mycoef <- function(object, ...) {
   emptycoef <- function (rownames) {
     nr <- length(rownames)
@@ -172,30 +176,53 @@ mycoef <- function(object, ...) {
       Dbar <- mean(covariates(object$mask)$D)
     if (object$CL) {
       Dhat <- mean(covariates(derivedDsurface(object))$D.0)
-      RBD  <- (Dhat-Dbar)/Dbar
       cvn <- CV(apply(object$capthist,1,sum))
       time <- object$proctime
-      out <- rbind(derivedDcoef(object), cvn = cvn,  Dbar = Dbar, Dhat = Dhat, RBD = RBD, time = time)
-      out[5:7, 2:4] <- NA
+      out <- rbind(derivedDcoef(object)[c('D', 'D.grf', 'lambda0', 'sigma'), ], 
+                   cvn = cvn,  Dbar = Dbar, Dhat = Dhat, time = time)
+      out[c('cvn','Dbar','Dhat'), 2:4] <- NA
     }
     else {
       Dhat <- mean(covariates(predictDsurface(object))$D.0)
-      RBD  <- (Dhat-Dbar)/Dbar
       cvn <- CV(apply(object$capthist,1,sum))
       time <- object$proctime
-      out <- rbind(coef(object), cvn = cvn,  Dbar = Dbar, Dhat = Dhat, RBD = RBD, time = time)
-      out[5:7, 2:4] <- NA
+      out <- rbind(coef(object)[c('D', 'D.grf', 'lambda0', 'sigma'), ], 
+                   cvn = cvn,  Dbar = Dbar, Dhat = Dhat, time = time)
+      out[c('cvn','Dbar','Dhat'), 2:4] <- NA
     }
       out
   }
-  else emptycoef(c('D', 'D.grf', 'lambda0', 'sigma', 'cvn', 'Dbar', 'Dhat','RBD','time'))
+  else emptycoef(c('D', 'D.grf', 'lambda0', 'sigma', 'cvn', 'Dbar', 'Dhat','time'))
 }
 exfn <- function (fits, vcv = FALSE, ...) {
   # fits is secrlist
   lapply(fits, function(fit) mycoef(fit))
 }
-
 msk <- make.mask(grid, nx = 64, buffer = 4)
+```
+
+```{r counts, eval = runsim, cache = TRUE}
+MhSsimsC <- run.scenarios(
+    nrepl     = nrepl, 
+    scenarios = scen, 
+    trapset   = grid, 
+    maskset   = msk,
+    fit       = FALSE, 
+    pop.args  = poparg, 
+    CH.function = "CHfn",
+    seed      = 123)
+saveRDS(MhSsimsC, file = 'MhSsimsC.RDS')
+```
+
+```{r MhS-run1, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
+fitarg1   <- list(
+  list (
+    list(detectfn = 'HHN', CL = TRUE,  model = list(lambda0 ~ 1, D~grf)),
+    list(detectfn = 'HHN', CL = FALSE, model = list(lambda0 ~ 1, D~grf)),
+    list(detectfn = 'HHN', CL = FALSE, model = list(lambda0 ~ 1, D~grf), 
+         details = list(distribution = "binomial"))
+  )
+)
 MhSsims <- run.scenarios(
     nrepl     = nrepl, 
     scenarios = scen, 
@@ -204,7 +231,7 @@ MhSsims <- run.scenarios(
     fit       = "multifit", 
     pop.args  = poparg, 
     CH.function = "CHfn",
-    fit.args  = fitarg, 
+    fit.args  = fitarg1, 
     seed      = 123, 
     extractfn = exfn)
 
@@ -212,45 +239,149 @@ saveRDS(MhSsims, file = 'MhSsims.RDS')
 ```
 
 ```{r MhS readRDS, echo = FALSE}
+# re-read in case previous chunk not run
 MhSsims <- readRDS(file = 'MhSsims.RDS')
 ```
 
 MhSsims completed with `r nrepl` replicates on `r nc` threads in `r round(MhSsims$proctime/60,1)` minutes.
 
+Run lambda0 model separately because fitting takes much longer and we will use fewer replicates.
+
+```{r MhS-run2, eval = runsim2, cache = cache, warning = FALSE, message = FALSE}
+fitarg2   <- list(
+  list (
+    list(detectfn = 'HHN', CL = TRUE,  model = list(lambda0 ~ 1, D~grf)),
+    list(detectfn = 'HHN', CL = TRUE,  model = list(lambda0 ~ lam0.05, D~grf))
+  )
+)
+MhSsims2 <- run.scenarios(
+    nrepl     = nrepl2, 
+    scenarios = scen, 
+    trapset   = grid, 
+    maskset   = msk,
+    fit       = "multifit", 
+    pop.args  = poparg, 
+    CH.function = "CHfn",
+    fit.args  = fitarg2, 
+    seed      = 123, 
+    extractfn = exfn)
+saveRDS(MhSsims2, file = 'MhSsims2.RDS')
+```
+
+
+```{r MhS readRDS2, echo = FALSE}
+# re-read in case previous chunk not run
+MhSsims2 <- readRDS(file = 'MhSsims2.RDS')
+```
+
+MhSsims2 completed with `r nrepl2` replicates on `r nc` threads in `r round(MhSsims2$proctime/60,1)` minutes.
+
+```{r MhS-run3, eval = runsim3, cache = cache, warning = FALSE, message = FALSE}
+fitarg3   <- list(
+  list (
+    list(detectfn = 'HHN', CL = TRUE,  model = list(lambda0 ~ lam0.05, D~grf), 
+         details = list(lambda0 = 'identity'))
+  )
+)
+MhSsims3 <- run.scenarios(
+    nrepl     = nrepl3, 
+    scenarios = scen, 
+    trapset   = grid, 
+    maskset   = msk,
+    fit       = "multifit", 
+    pop.args  = poparg, 
+    CH.function = "CHfn",
+    fit.args  = fitarg3, 
+    seed      = 123, 
+    extractfn = exfn)
+saveRDS(MhSsims3, file = 'MhSsims3.RDS')
+```
+
+```{r MhS readRDS3, echo = FALSE}
+# re-read in case previous chunk not run
+MhSsims3 <- readRDS(file = 'MhSsims3.RDS')
+```
+
+MhSsims3 completed with `r nrepl3` replicates on `r nc` threads in `r round(MhSsims3$proctime/60,1)` minutes.
+
 ## Results
+
+```{r summary functions, eval = results, echo = TRUE}
+mn <- function(x) mean(x, na.rm=TRUE)
+se <- function(x) sd(x, na.rm=TRUE)/sqrt(sum(!is.na(x)))
+nv <- function(x) sum(!is.na(x))
+```
+
+Counts
+
+```{r summary counts}
+MhSsimsC <- readRDS(file = 'MhSsimsC.RDS')
+summary(MhSsimsC)
+```
+
+Average simulated density
+```{r Dbar}
+# averaged over all 5 scenarios, nrepl replicates each
+Dbar <- unlist(lapply(MhSsims$output, function(x) sapply(x, function(y) y$fits1['Dbar', 'beta'])))
+c(mean = mn(Dbar), SD = sd(Dbar), SE = se(Dbar), n = nv(Dbar))
+```
+
+```{r MhS table functions, eval = results, echo = TRUE, results = "hold"}
+# summary results, 
+# including bias in coefficients D and D.grf of fitted spatial model
+onefit <- function(fit = 1, sims = MhSsims) {
+    onesim <- function (sim, parm, fn) {
+        fn(sapply(sim, function(x) x[[fit]][parm,'beta']))
+    }
+    # post-calculate bias, relative bias
+    # Dbar is 'true' density averaged over mask
+    # Dhat is estimated density averaged over mask
+    oneRBD <- function (sim, fn) {
+        Dhat <- sapply(sim, function(x) x[[fit]]['Dhat','beta'])
+        Dbar <- sapply(sim, function(x) x[[fit]]['Dbar','beta'])
+        fn((Dhat-Dbar)/Dbar)
+    }
+    oneBD <- function (sim, fn) {
+        Dhat <- sapply(sim, function(x) x[[fit]]['Dhat','beta'])
+        Dbar <- sapply(sim, function(x) x[[fit]]['Dbar','beta'])
+        fn(log(Dhat/Dbar))
+    }
+    df <- data.frame(
+        CVlambda0 = seq(0,0.8,0.2),
+        nvalid    = sapply(sims$output, onesim, 'D',        fn = nv),
+        D         = sapply(sims$output, onesim, 'D',        fn = mn)-beta0,
+        seD       = sapply(sims$output, onesim, 'D',        fn = se),
+        Dgrf      = sapply(sims$output, onesim, 'D.grf',    fn = mn)-beta1,
+        seDgrf    = sapply(sims$output, onesim, 'D.grf',    fn = se),
+        cvn       = sapply(sims$output, onesim, 'cvn',      fn = mn),
+        Dbar      = sapply(sims$output, onesim, 'Dbar',     fn = mn),
+        Dhat      = sapply(sims$output, onesim, 'Dhat',     fn = mn),
+        RBD       = sapply(sims$output, oneRBD,             fn = mn),
+        seRBD     = sapply(sims$output, oneRBD,             fn = se),
+        BD        = sapply(sims$output, oneBD,              fn = mn),
+        seBD      = sapply(sims$output, oneBD,              fn = se),
+        time      = sapply(sims$output, onesim, 'time',     fn = mn),
+        setime    = sapply(sims$output, onesim, 'time',     fn = se)
+    )
+    df
+}
+```
 
 ```{r MhS table, eval = results, echo = TRUE, results = "hold"}
 options(width = 110, digits = 4)
 MhSsims <- readRDS(file = 'MhSsims.RDS')
-mn <- function(x) mean(x, na.rm=TRUE)
-se <- function(x) sd(x, na.rm=TRUE)/sqrt(sum(!is.na(x)))
-nv <- function(x) sum(!is.na(x))
-
-onefit <- function(fit = 1) {
-    onesim <- function (sim, parm, fn) {
-        fn(sapply(sim, function(x) x[[fit]][parm,'beta']))
-    }
-    df <- data.frame(
-        CVlambda0 = seq(0,0.8,0.2),
-        nvalid    = sapply(MhSsims$output, onesim, 'D',        fn = nv),
-        D         = sapply(MhSsims$output, onesim, 'D',        fn = mn)-beta0,
-        seD       = sapply(MhSsims$output, onesim, 'D',        fn = se),
-        Dgrf      = sapply(MhSsims$output, onesim, 'D.grf',    fn = mn)-beta1,
-        seDgrf    = sapply(MhSsims$output, onesim, 'D.grf',    fn = se),
-        cvn       = sapply(MhSsims$output, onesim, 'cvn',      fn = mn),
-        Dbar      = sapply(MhSsims$output, onesim, 'Dbar',     fn = mn),
-        Dhat      = sapply(MhSsims$output, onesim, 'Dhat',     fn = mn),
-        RBD       = sapply(MhSsims$output, onesim, 'RBD',      fn = mn),
-        seRBD     = sapply(MhSsims$output, onesim, 'RBD',      fn = se),
-        time      = sapply(MhSsims$output, onesim, 'time',     fn = mn),
-        setime    = sapply(MhSsims$output, onesim, 'time',     fn = se)
-    )
-    df
-}
 lapply(1:3, onefit)
 ```
 
-```{r MhS figure, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Fig. 2. Relative bias of beta estimates given individual variation" }
+Now, with and without individual covariate:
+
+```{r MhS table2, eval = results, echo = TRUE, results = "hold"}
+options(width = 110, digits = 4)
+MhSsims2 <- readRDS(file = 'MhSsims2.RDS')
+lapply(1:2, onefit, sims = MhSsims2)
+```
+
+```{r MhS figure, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Fig. 2. Bias of beta estimates given individual variation" }
 cvltext <- expression(paste("CV( ", lambda[0], " )"))
 x <- seq(0,0.8,0.20)
 par(mfrow = c(1,1), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', pty = 's', las = 0)
@@ -267,7 +398,7 @@ legend ('topright', legend = c(expression(italic(hat(beta[1]))),
         pch=c(16,21), pt.bg = 'white', lty = 1)
 ```
 
-```{r MhS figure RBD, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Fig. 3. Relative bias of density estimates given individual variation" }
+```{r MhS figure BD, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Fig. 3. Bias of density estimates given individual variation" }
 cvltext <- expression(paste("CV( ", lambda[0], " )"))
 x <- seq(0,0.8,0.20)
 par(mfrow = c(1,1), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', pty = 's', las = 0)
@@ -276,12 +407,32 @@ plot(0,0, type = 'n', xlim = c(0,0.8), ylim = c(-0.3,0.2),
      xlab = cvltext, ylab = '', las=1)
 mtext(side=2, 'Estimated relative bias', line = 2.5, las=0)
 abline(h = 0, lty = 2)
-addRB(x+offset, onefit(1), mean = 'RBD', se = 'seRBD', type = 'o', pch = 16)
-addRB(x-offset, onefit(2), mean = 'RBD', se = 'seRBD', type = 'o', pch = 21, bg = 'white')
+addRB(x+offset, onefit(1), mean = 'BD', se = 'seBD', type = 'o', pch = 16)
+addRB(x-offset, onefit(2), mean = 'BD', se = 'seBD', type = 'o', pch = 21, bg = 'white')
 
 legend ('topright', legend = c(expression(italic(hat(D)) ~~ 'derived'), 
                                expression(italic(hat(D)) ~~ 'full')), 
                                pch=c(16,21), pt.bg = 'white', lty = 1, y.intersp=1.3)
+```
+
+```{r MhS figure BD lambda0, eval = figures, echo = TRUE, fig.width = 8, fig.height = 4, fig.cap = "Fig. 4. Bias of density estimates given individual variation, with individual covariate" }
+cvltext <- expression(paste("CV( ", lambda[0], " )"))
+x <- seq(0,0.8,0.20)
+par(mfrow = c(1,1), mar = c(4,4,1,1), mgp = c(2.4,0.7,0), bty = 'o', pty = 's', las = 0)
+offset <- 0.005
+plot(0,0, type = 'n', xlim = c(0,0.8), ylim = c(-0.3,0.2), 
+     xlab = cvltext, ylab = '', las=1)
+mtext(side=2, 'Estimated relative bias', line = 2.5, las=0)
+abline(h = 0, lty = 2)
+addRB(x+offset, onefit(1, MhSsims2), mean = 'BD', se = 'seBD', type = 'o', pch = 16)
+addRB(x-offset, onefit(2, MhSsims2), mean = 'BD', se = 'seBD', type = 'o', pch = 21, bg = 'white')
+addRB(x-offset, onefit(1, MhSsims3), mean = 'BD', se = 'seBD', type = 'o', pch = 21, bg = 'yellow')
+
+legend ('topright', legend = c(expression(italic(hat(D)) ~~ 'null model'), 
+                               expression(italic(hat(D)) ~~ 'log(lambda0) ~ lam0.05'), 
+                               expression(italic(hat(D)) ~~ 'lambda0 ~ lam0.05')), 
+        pch = c(16,21,21), pt.bg = c('white', 'white', 'yellow'), 
+        lty = 1, y.intersp=1.3)
 ```
 
 ```{r timing}
