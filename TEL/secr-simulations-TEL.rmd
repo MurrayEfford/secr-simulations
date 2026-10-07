@@ -34,9 +34,9 @@ We consider the following scenario
 * there is a history for each telemetered individual (all-zero if not detected), and
 * equivalent data (counts of detections) are collected for all individuals, whether marked and unmarked.
 
-## Implementation in **secr** 5.5.0
+## Implementation in **secr** 5.5.1
 
-This is not described here in detail. Basically, 
+A detailed technical description is given in the vignette at https://www.otago.ac.nz/density/pdfs/secr-telemetry-marking.pdf. In outline:
 
 1. A capthist object is formed from the sightings of telemetered animals using 
 the new telemetry type 'marking', the markocc attribute of its 'traps' is set to 
@@ -44,16 +44,25 @@ the new telemetry type 'marking', the markocc attribute of its 'traps' is set to
 unmarked animals are attached. The required capthist has one row for each 
 telemetered animal, a 'telemetryxy' attribute that is a list with telemetry 
 locations, and attribute 'Tu' for additional sightings of unmarked animals.
-2. A model is fitted as usual. The new 'details' settings 'uselog' and 'safeLL' 
-should be TRUE to avoid numerical issues.
-3. At the same time or later, sighting data are simulated to determine the 
-overdispersion 'chat' and adjust the variances (Efford and Hunter 2018).
+2. A model is fitted as usual. The activity centres of the collared animals are integrated
+by Gauss-Hermite quadrature (details 'telemetryint = "GH"'). The details 'uselog' and 'safeLL'
+are TRUE, to avoid numerical underflow with many telemetry fixes.
+3. The overdispersion 'chat' of the sightings is computed analytically from the fitted model
+(details 'chatmethod = "analytic"') and used to adjust the variances. This replaces the simulation
+of sightings (Efford and Hunter 2018) used for other mark--resight models. In **secrdesign**
+this is `run.scenarios(..., chatnsim = -1)` with `chatmethod = "analytic"` in `fit.args$details`.
+
+As a check on the **secr** results, the same simulated data are also fitted by an independent 
+maximum likelihood implementation in RTMB (Kristensen et al. 2016, Kristensen 2026) 
+(see file 'rtmb_marking.R', listed in the Appendix).
+The RTMB implementation differs from the **secr** likelihood in modelling the total of sightings of unmarked animals
+as negative binomial rather than as Poisson with a variance scale factor.
 
 ## Settings
 
 These are intended to follow the 24 scenarios considered by Whittington et al. (2025a Appendix Table S2).  A grid of 81 cameras spanning 90 units on a side (Whittington et al. 2025a p.4 stated 120 units) lies within a 150 x 150 square region (possibly 149 x 149 in Whittington et al. 2025b).
 
-The same conditions used for simulation and fitting.
+The same conditions are used for simulation and fitting.
 
 | Parameter | Value(s) |
 |:-----|:-----------------------|
@@ -70,14 +79,16 @@ Four combinations of lambda0 and sigma are used (see scen).
 
 ## Package version, date and platform
 
-```{r startup, warning = FALSE, message = FALSE, results = "hold"}
-# source('../setup.R')
-source('d:/density secr 5.5/knitr/secr-simulations/setup.R')
+```{r startup, echo = TRUE, warning = FALSE, message = FALSE, results = "hold"}
+source('../setup.R')
+nrepl   <- 1000
+```
+
+```{r startuphidden, echo = FALSE, warning = FALSE, message = FALSE, results = "hold"}
+# source('d:/density secr 5.5/knitr/secr-simulations/setup.R')
 runsim  <- FALSE
 figures <- TRUE
-cache   <- FALSE
-nrepl   <- 200
-metadata(runsim) # if FALSE picks up saved metadata.RDS
+metadata(runsim, extra = FALSE) # if FALSE picks up saved metadata.RDS
 ```
 
 ## Simulation code
@@ -285,14 +296,14 @@ getWCH <- function (traps, popn, detectfn, detectpar, noccasions,
         N = N, nMarked = nMarked,  K = K.camera, sigma = sigma, lam0 = lam0, 
         n.camera.row = n.camera.row, 
         xlims = xlims, ylims = ylims, xlim.R = xlim.R, ylim.R = ylim.R,  
-        nlocs = 100, plotSim = plotSim) 
+        nlocs = nlocs, plotSim = plotSim)
     asCH (Wdata, detector = 'count', verify = FALSE)
 }
 ```
 ### Define TEL scenarios for secrdesign
 
 ```{r TEL scenarios, eval = TRUE, message = FALSE, results = "hide"}
-trW        <- make.grid(detector = "count", nx = 9, ny = 9, spacing = 90/8, 
+trW  <- make.grid(detector = "count", nx = 9, ny = 9, spacing = 90/8, 
                         origin = c(30,30))
 
 # Define habitat masks with discretization appropriate to sigma = 4, sigma = 8
@@ -322,11 +333,13 @@ poparg <- list(Ndist = 'fixed')
 detarg <- list(list(nocctelem = 100, ntelem = 5),
                list(nocctelem = 100, ntelem = 10),
                list(nocctelem = 100, ntelem = 20))
-fitarg <- list(detectfn = 'HHN', 
+fitarg <- list(detectfn = 'HHN',
                details  = list(
                    distribution = 'binomial',    # because N fixed, not Poisson
-                   uselog = TRUE, 
-                   safeLL = TRUE))
+                   telemetryint = 'GH',          # Gauss-Hermite integration over AC of collared animals
+                   chatmethod   = 'analytic',    # overdispersion computed, not simulated
+                   uselog = TRUE,                # avoid underflow with 100 fixes per animal;
+                   safeLL = TRUE))               # TRUE by default with telemetry in later versions of secr
 ```
 
 
@@ -345,34 +358,66 @@ ch <- getWCH (trW,
               plotSim    = TRUE)
 # and print summary
 summary(ch)
+
+# fit model using the previous settings
+fitarg$capthist <- ch
+fitarg$trace <- FALSE
+fitarg$mask <- mskW25
+fit <- do.call(secr.fit, fitarg)
+predict(fit)
 ```
 
 ### Run TEL simulations
 
-```{r TEL run, eval = runsim, cache = cache, warning = FALSE, message = FALSE}
-TELsims <- run.scenarios(
-    nrepl       = nrepl, 
-    scenarios   = scen, 
-    CH.function = "getWCH",
-    trapset     = list(trW), 
-    maskset     = list(mskW25, mskW50), 
-    pop.args    = poparg,
-    det.args    = detarg, 
-    fit         = TRUE, 
-    fit.args    = fitarg, 
-    seed        = 123,
-    chatnsim    = -10000,    # simulations to adjust variance 
-    verbose     = FALSE)
-saveRDS(TELsims, file = 'TELsims.RDS')
+```{r secr, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
+TELsims <- secrdesign::run.scenarios(
+            nrepl       = nrepl,
+            scenarios   = scen, 
+            CH.function = "getWCH",
+            trapset     = list(trW), 
+            maskset     = list(mskW25, mskW50),
+            pop.args    = poparg, 
+            det.args    = detarg,
+            fit         = TRUE, 
+            fit.args    = fitarg,
+            chatnsim    = -1,      # analytic c-hat (fitarg$details$chatmethod): variance only
+            ncores      = 18,
+            byscenario  = TRUE,
+            seed        = 123, 
+            verbose     = FALSE)
+saveRDS(TELsims, file = 'TELsims_secr.RDS')
+```
+
+```{r rtmb, eval = runsim, cache = TRUE, warning = FALSE, message = FALSE}
+# the same simulated data as for secr (same seed and call structure; neither fit uses random numbers)
+source('rtmb_marking.R')
+TELsimsR <- secrdesign::run.scenarios(
+    nrepl        = nrepl,
+    scenarios    = scen,
+    CH.function  = "getWCH",
+    trapset      = list(trW),
+    maskset      = list(mskW25, mskW50),
+    pop.args     = poparg,
+    det.args     = detarg,
+    fit          = FALSE,
+    extractfn    = rtmb_extract_masks,   # chooses the mask by scenario$maskindex
+    distribution = "binomial",
+    ncores       = 18,
+    byscenario   = TRUE,
+    seed         = 123,
+    verbose      = FALSE)
+saveRDS(TELsimsR, file = 'TELsims_rtmb.RDS')
 ```
 
 ```{r TEL readRDS, echo = FALSE}
 # load simulations, possibly from a previous run (runsim = FALSE)
-TELsims <- readRDS(file = 'TELsims.RDS')
+TELsims <- readRDS(file = 'TELsims_secr.RDS')
+TELsimsR <- readRDS(file = 'TELsims_rtmb.RDS')
 ```
 
-TELsims completed with `r nrepl` replicates on `r setNumThreads()` threads in 
-`r round(TELsims$proctime/60,1)` minutes.
+TELsims completed with `r nrepl` replicates in `r round(TELsims$proctime/3600,1)` hours (secr)
+and `r round(TELsimsR$proctime/3600,1)` hours (RTMB), elapsed.
+
 
 ## Results
 
@@ -384,11 +429,15 @@ TELsims completed with `r nrepl` replicates on `r setNumThreads()` threads in
 These are averages.
 
 ```{r proctime}
-TELattr <- data.frame(
-    proctime = apply(sapply(TELsims$output, function(x) sapply(x, attr, 'proctime')),2,mean, na.rm = TRUE),
-    chat = apply(sapply(TELsims$output, function(x) sapply(x, attr, 'chat')),2,mean, na.rm = TRUE)
-)
-TELattr
+getTime <- function (sims) {
+    data.frame(
+        proctime = apply(sapply(sims$output, function(x) 
+            sapply(x, attr, 'proctime')),2,mean, na.rm = TRUE),
+        chat = apply(sapply(sims$output, function(x) 
+            sapply(x, attr, 'chat')),2,mean, na.rm = TRUE)
+    )
+}
+getTime(TELsims)
 ```
 
 ```{r altproctime, eval = FALSE, echo = FALSE}
@@ -418,11 +467,22 @@ estS <- estimateSummary(TELsims, 'sigma')[,-1]
 scenarios <- scen[,c(5,6,7)]
 ```
 
-<!-- ### Raw counts -->
+### Raw counts
 
-<!-- ```{r TEL tables2, eval = figures, echo = FALSE, results = "hold"} -->
-<!-- cbind(scenarios, round(getcounts(TELsims),4)) -->
-<!-- ``` -->
+```{r TEL tables2, eval = figures, echo = FALSE, results = "hold"}
+cbind(scenarios, round(getcounts(TELsims),4))
+```
+
+Averages --  
+
+|----|---------------------------------------------------------------|
+|n | number of telemetered (marked) animals  |
+|ndet | number of camera detections  |
+|ndet | number of movements between cameras  |
+|dpa | detectors per detected animal  |
+|unmarked | detections of unmarked animals (Tu)  |
+|nonid | detections of marked but unidentified animals (Tm)  |
+|nzero | number of all-zero detection histories (marked animals never photographed)  |
 
 ### Estimates
 
@@ -466,16 +526,20 @@ print(S2, row.names = FALSE)
 A key difference is that their algorithm set maximum estimates of D/0.6 i.e. {r round(c(60,120)/2.25/0.6, 2)}. We can apply that filter to the current results:
 
 ```{r simsum, eval = TRUE, mar=c(3,3,1,1)}
-# read simulation results
-TELsims <- readRDS('TELsims.RDS')
+# simulation results (TELsims, TELsimsR) were read above
+
 # define matrix with min,max density for each scenario
 permitted <- outer(TELsims$scenarios$D, c(0, 1/0.6)) 
+
 # summarise filtered results
 simsum <- estimateSummary(TELsims, 'D', validrange = permitted)
 simsum
+
+# How many knocked out by validrange?
+estimateSummary(TELsims, 'D')$nvalid - simsum$nvalid
 ```
 
-Comparing current simulations ('current') with Whittington et al. (2025a) ('Table S2') --
+Comparing current simulations ('current') with Whittington et al. (2025a) ('Table S2'). 
 
 ```{r simsum figures, eval = TRUE, fig.width=7, fig.height=7.5, out.width = '100%'}
 par(pty = 's', mfrow = c(2,2), mar = c(3,3,3,2), mgp = c(2,0.7,0))
@@ -492,36 +556,72 @@ text(S2$CVmean+2, simsum$RSE*100, 1:24, cex=0.6)
 abline(0,1)
 mtext(side=3, line=0.5, 'RSE(D-hat) %', cex=0.9)
 
-plot(S2$RMSE, simsum$RMSE, xlab = 'RMSE Table S2', ylab = 'RMSE current',
-     xlim=c(0,25), ylim=c(0,25))
-text(S2$RMSE+0.8, simsum$RMSE, 1:24, cex=0.6)
+# Whittington et al. RMSE is for N-hat, so divide by 2.25 ha to convert to density
+plot(S2$RMSE/2.25, simsum$RMSE, xlab = 'RMSE Table S2', ylab = 'RMSE current',
+     xlim=c(0,20), ylim=c(0,20))
+text(S2$RMSE/2.25+0.8, simsum$RMSE, 1:24, cex=0.6)
 abline(0,1)
 mtext(side=3, line=0.5, 'RMSE(D-hat)', cex=0.9)
 
 plot(S2$CIC, simsum$COV*100, xlab = 'CIC Table S2', ylab = 'COV current',
-     xlim=c(88,100), ylim=c(88,100))
+     xlim=c(92,100), ylim=c(92,100))
 text(S2$CIC+0.4, simsum$COV*100, 1:24, cex=0.6)
 mtext(side=3, line=0.5, 'Coverage 95% CI for D-hat', cex=0.9)
 abline(h=95,v=95)
 ```
 
-### Notes
+### Comparison with an independent RTMB implementation
 
-* 'RB current' may be inflated by 1 - 149^2^ / 150^2^  = +1.3% if N was distributed over the smaller region 149 x 149.
-* RMSE must have been calculated differently ('RMSE Table S2' about twice 'RMSE current')
-* Both methods have excessive CI coverage
+The same simulated datasets were fitted by maximum likelihood in RTMB (Appendix 1). The
+RTMB likelihood treats the total of sightings of unmarked animals as negative binomial, so
+small differences in the estimates of D are expected. The summaries below use the same
+filter on D as above.
+
+```{r RTMB comparison, eval = TRUE, fig.width=7, fig.height=7.5, out.width = '100%'}
+simsumR <- estimateSummary(TELsimsR, 'D', validrange = permitted)
+cmp <- data.frame(scenarios[,1:3],
+    RB.secr = round(simsum$RB*100,1), RB.RTMB = round(simsumR$RB*100,1),
+    RSE.secr = round(simsum$RSE*100,1), RSE.RTMB = round(simsumR$RSE*100,1),
+    COV.secr = round(simsum$COV*100,1), COV.RTMB = round(simsumR$COV*100,1))
+cmp
+
+# paired comparison: both methods were fitted to the same data
+ratio <- sapply(seq_along(TELsims$output), function(i) mean(
+    mapply(function(a, b) a['D','estimate'] / b['D','estimate'],
+           TELsims$output[[i]], TELsimsR$output[[i]]), na.rm = TRUE))
+cat('Mean over scenarios of mean ratio of D estimates, secr / RTMB:', round(mean(ratio), 4), '\n')
+
+par(pty = 's', mfrow = c(2,2), mar = c(3,3,3,2), mgp = c(2,0.7,0))
+plot(simsumR$RB*100, simsum$RB*100, xlab = 'RB RTMB', ylab = 'RB secr'); abline(0,1)
+mtext(side=3, line=0.5, 'Bias(D-hat) %', cex=0.9)
+plot(simsumR$RSE*100, simsum$RSE*100, xlab = 'RSE RTMB', ylab = 'RSE secr'); abline(0,1)
+mtext(side=3, line=0.5, 'RSE(D-hat) %', cex=0.9)
+plot(simsumR$RMSE, simsum$RMSE, xlab = 'RMSE RTMB', ylab = 'RMSE secr'); abline(0,1)
+mtext(side=3, line=0.5, 'RMSE(D-hat)', cex=0.9)
+plot(simsumR$COV*100, simsum$COV*100, xlab = 'COV RTMB', ylab = 'COV secr'); abline(h=95, v=95)
+mtext(side=3, line=0.5, 'Coverage 95% CI for D-hat', cex=0.9)
+```
 
 ### Compare timing
 
-Average times in seconds --
+Average time per replicate in seconds. The time for **secr** includes both fitting steps
+(the model fit and the analytic overdispersion adjustment). Times depend on the machine and
+the number of replicates running at once.
 
 ```{r, results = 'hold'}
 se <- function(x) sd(x, na.rm=TRUE) / sqrt(sum(!is.na(x)))
-cat('Current\n')
-c(mean = mean(TELattr$proctime), SE = se(TELattr$proctime))
+secrtime <- unlist(lapply(TELsims$output, function(x) sapply(x, attr, 'proctime')))
+rtmbtime <- unlist(lapply(TELsimsR$output, function(x) sapply(x, attr, 'proctime')))
+cat('secr\n')
+c(mean = mean(secrtime, na.rm = TRUE), SE = se(secrtime))
+cat('\nRTMB\n')
+c(mean = mean(rtmbtime, na.rm = TRUE), SE = se(rtmbtime))
 cat('\nTable S2\n')
 c(mean = mean(S2$Time*60), SE = se(S2$Time*60))
 ```
+
+<br>
+<br>
 
 # References
 
@@ -533,6 +633,10 @@ Efford, M. G. and Mowat, G. (2014) Compensatory heterogeneity in spatially expli
 Ecology 95: 1341--1348. https://www.otago.ac.nz/density/pdfs/Efford%20and%20Mowat%202014%20Ecology.pdf
 
 Efford, M. G. (2025) The SECR book. A handbook of spatially explicit capture–recapture methods. Version 1.0.0. Zenodo https://doi.org/10.5281/zenodo.15109938.
+
+Kristensen K, Nielsen A, Berg CW, Skaug H, Bell BM (2016) TMB: Automatic differentiation and Laplace approximation. Journal of Statistical Software 70: 1--21. https://doi.org/10.18637/jss.v070.i05 
+
+Kristensen, K. (2026) RTMB: 'R' Bindings for 'TMB'. R package version 2.0, https://CRAN.R-project.org/package=RTMB.
 
 Margenau, L. L. S., Cherry, M. J., Miller, K. V., Garrison, E. P., and Chandler, R. B. (2022)
 Monitoring partially marked populations using camera and telemetry data. Ecological Applications 32: e2553.
@@ -552,63 +656,16 @@ Whittington, J., Hebblewhite, M., Meyer, C., Johnston, B., Forshner, A., Macbeth
 
 Whittington, J., Hebblewhite, M., Meyer, C., Johnston, B., Forshner, A., Macbeth, B., Einfeldt, A., and Cherry, S. (2025b). Data from: One-stage spatial mark-resight analysis reveals an increasing grizzly bear population with declining density near roads [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.10198936
 
+<br>
+<br>
 
-# Appendix. Alternate CH.function for de novo simulation 
+# Appendix 1. RTMB implementation
 
-This is code that I used before realising I could use Jesse's code directly.
+This is the code in file 'rtmb_marking.R' used for the comparison with RTMB. It is an
+independent implementation of the one-stage likelihood for telemetry type 'marking'
+and is not run when this document is rendered. `rtmb_extract_masks` is the `extractfn`
+used with `run.scenarios(fit = FALSE)`.
 
-```{r simulationold}
-# Code to simulate combined telemetry-sighting-camera capthist object
-Tafunction <-  function (traps, popn, detectfn, detectpar, noccasions, 
-                         ntelem, nocctelem, uniformtelem = FALSE, seed = NULL) {
-    # select sample of telemetered animals
-    if (uniformtelem) {
-        telem <- sample.int(nrow(popn), ntelem)
-    }
-    else {
-        # Whittington et al. 2025 selected first ntelem captured animals (cheating?)
-        # this is an analogue (inclusion proportional to sighting probability)
-        p <- pdot(popn, traps, detectfn, detectpar, noccasions = 1)
-        telem <- sample.int(nrow(popn), ntelem, prob = p)
-    }
-    
-    popt  <- subset(popn, telem)
-    # others are not telemetered
-    popnt <- subset(popn, rownames(popn)[!rownames(popn) %in% telem])
-    
-    # simulate detections of telemetered animals
-    # renumber = FALSE (keep original animalID) needed for matching
-    tCH <- sim.capthist(tr,  
-                        popn       = popt, 
-                        renumber   = FALSE, 
-                        detectfn   = detectfn, 
-                        noccasions = noccasions,
-                        detectpar  = detectpar,
-                        seed       = seed)
-    
-    # simulate sightings of non-telemetered animals
-    # these contribute only sightings
-    nontCH <- sim.capthist(tr,  
-                           popn       = popnt, 
-                           renumber   = FALSE, 
-                           detectfn   = detectfn, 
-                           noccasions = noccasions,
-                           detectpar  = detectpar)
-    
-    # simulate some telemetry
-    te <- make.telemetry()
-    teCH <- sim.capthist(te, 
-                         popn       =  popt, 
-                         renumber   = FALSE, 
-                         detectfn   = detectfn, 
-                         detectpar  = list(lambda0 = 1, sigma = detectpar$sigma),
-                         noccasions = nocctelem)
-    
-    # combine simulated telemetry and sightings of telemetered animals
-    # telemetry collapsed to a single occasion
-    combinedCH <- addTelemetry(tCH, teCH, type = "marking", collapsetelemetry = TRUE, verify = FALSE)
-    markocc(traps(combinedCH)) <- c(rep(0,noccasions),1)
-    combinedCH <- addSightings(combinedCH, unmarked = apply(nontCH, c(3,2), sum), verify = FALSE)
-    combinedCH
-}
+```{r rtmb code, eval = FALSE, code = readLines('rtmb_marking.R')}
 ```
+

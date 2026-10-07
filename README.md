@@ -26,6 +26,7 @@ Follow the HTML link for results and the RMD link for R code.
 | [RSF]  | [RSF rmd]  | Habitat-driven variation in related detection<sup>1</sup> |
 | [SARE] | [SARE rmd] | Spatially autocorrelated random effects<sup>1</sup> |
 | [STR]  | [STR rmd]  | Stratification and spatial variation in density, effort and detection |
+| [TEL]  | [TEL rmd]  | Validation of telemetry marking model in secr 5.5.1 (cf Whittington et al. 2025) |
 
 1. RSF and SARE are different aspects of the same phenomenon; RSF relates to Royle et al. (2013) and Efford (2014), whereas SARE relates to Moqanaki et al. (2021) and Dey et al. (2023).
 
@@ -43,7 +44,9 @@ Royle, J. A., Chandler, R.B., Sun, C.C., and Fuller, A. K. 2013. Integrating res
 
 Stevenson, B.C., Fewster, R. M. and Sharma, K. 2021. Spatial correlation structures for detections of individuals in spatial capture--recapture models. Biometrics 78: 963--73.
 
-Last updated: 16 September 2025
+Whittington, J., Hebblewhite, M., Meyer, C., Johnston, B., Forshner, A., Macbeth, B. J., Einfeldt, A. L., and Cherry, S. G. (2025) One‐stage spatial mark–resight analysis reveals an increasing grizzly bear population with declining density near roads. Ecosphere 16: e70246. https://doi.org/10.1002/ecs2.70246
+
+Last updated: 7 October 2026
 
 [ARR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/ARR/secr-simulations-ARR.html
 [CLO]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/CLO/secr-simulations-CLO.html
@@ -59,6 +62,7 @@ Last updated: 16 September 2025
 [RSF]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/RSF/secr-simulations-RSF.html
 [SARE]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/SARE/secr-simulations-SARE.html
 [STR]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/STR/secr-simulations-STR.html
+[TEL]: https://htmlpreview.github.io/?https://github.com/MurrayEfford/secr-simulations/blob/main/TEL/secr-simulations-TEL.html
 
 [ARR rmd]: SARE/secr-simulations-ARR.rmd
 [CLO rmd]: CLO/secr-simulations-CLO.rmd
@@ -74,3 +78,4 @@ Last updated: 16 September 2025
 [RSF rmd]: RSF/secr-simulations-RSF.rmd
 [SARE rmd]: SARE/secr-simulations-SARE.rmd
 [STR rmd]: STR/secr-simulations-STR.rmd
+[TEL rmd]: TEL/secr-simulations-TEL.rmd
