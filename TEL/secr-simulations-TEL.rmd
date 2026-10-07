@@ -475,6 +475,7 @@ cbind(scenarios, round(getcounts(TELsims),4))
 
 Averages --  
 
+|    |                                                               |
 |----|---------------------------------------------------------------|
 |n | number of telemetered (marked) animals  |
 |ndet | number of camera detections  |
