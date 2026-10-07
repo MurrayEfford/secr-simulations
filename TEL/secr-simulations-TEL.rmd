@@ -49,8 +49,7 @@ by Gauss-Hermite quadrature (details 'telemetryint = "GH"'). The details 'uselog
 are TRUE, to avoid numerical underflow with many telemetry fixes.
 3. The overdispersion 'chat' of the sightings is computed analytically from the fitted model
 (details 'chatmethod = "analytic"') and used to adjust the variances. This replaces the simulation
-of sightings (Efford and Hunter 2018) used for other mark--resight models. In **secrdesign**
-this is `run.scenarios(..., chatnsim = -1)` with `chatmethod = "analytic"` in `fit.args$details`.
+of sightings (Efford and Hunter 2018) used for other mark--resight models. In **secrdesign** >= 2.10.3 this is `run.scenarios(..., chatnsim = -1)` with `chatmethod = "analytic"` in `fit.args$details`.
 
 As a check on the **secr** results, the same simulated data are also fitted by an independent 
 maximum likelihood implementation in RTMB (Kristensen et al. 2016, Kristensen 2026) 
