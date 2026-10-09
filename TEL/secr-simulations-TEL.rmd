@@ -15,7 +15,7 @@ output:
   word_document: default
 ---
 
-# Telemetry marking
+# Telemetry-calibrated cue counts
 
 These simulations test a MLE implementation of the 1-step method of Whittington et al. (2025a).
 
@@ -24,6 +24,8 @@ These simulations test a MLE implementation of the 1-step method of Whittington 
 It has been generally recognised that spatial mark--resight studies require either data on the initial deployment of marks, allowing the spatial distribution of marked animals to be modelled, or strong assumptions about the distribution (e.g. spatially uniform) (Royle et al. 2014, Efford and Hunter 2018).
 
 However, the papers of Margenau et al. (2022) and Whittington et al. (2025a) pointed to a way of analysing camera data for collared animals that is not prone to bias from unmodelled deployment of collars. They recognised that detection parameters (e.g. $\lambda_0$, $\sigma$) may be estimated from the collared animals alone. Combining the detection parameter estimates with observed counts in either a 2-stage- (Margenau et al. 2022) or 1-stage-process (Whittington et al. 2025a) yields estimates of population density.
+
+Some modifications have been made to reduce bias and a tendency to over-coverage of 95% confidence intervals (see technical vignette linked below). The original model assumed independence of telemetry data and total counts; in reality they are they are positively correlated, which leads to over-estimation of the sampling variance.
 
 We consider the following scenario
 
@@ -54,8 +56,7 @@ of sightings (Efford and Hunter 2018) used for other mark--resight models. In **
 As a check on the **secr** results, the same simulated data are also fitted by an independent 
 maximum likelihood implementation in RTMB (Kristensen et al. 2016, Kristensen 2026) 
 (see file 'rtmb_marking.R', listed in the Appendix).
-The RTMB implementation differs from the **secr** likelihood in modelling the total of sightings of unmarked animals
-as negative binomial rather than as Poisson with a variance scale factor.
+The RTMB implementation differs from the **secr** likelihood in modelling the total of sightings of unmarked animals as negative binomial rather than as Poisson with a variance scale factor.
 
 ## Settings
 
