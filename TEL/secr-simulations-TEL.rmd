@@ -25,7 +25,7 @@ It has been generally recognised that spatial mark--resight studies require eith
 
 However, the papers of Margenau et al. (2022) and Whittington et al. (2025a) pointed to a way of analysing camera data for collared animals that is not prone to bias from unmodelled deployment of collars. They recognised that detection parameters (e.g. $\lambda_0$, $\sigma$) may be estimated from the collared animals alone. Combining the detection parameter estimates with observed counts in either a 2-stage- (Margenau et al. 2022) or 1-stage-process (Whittington et al. 2025a) yields estimates of population density.
 
-Some modifications have been made to reduce bias and a tendency to over-coverage of 95% confidence intervals (see technical vignette linked below). The original model assumed independence of telemetry data and total counts; in reality they are they are positively correlated, which leads to over-estimation of the sampling variance.
+Some modifications have been made to reduce bias and a tendency to over-coverage of 95% confidence intervals (see technical vignette linked below). The original model assumed independence of telemetry data and total counts; in reality they are positively correlated, which leads to over-estimation of the sampling variance.
 
 We consider the following scenario
 
